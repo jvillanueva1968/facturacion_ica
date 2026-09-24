@@ -132,29 +132,75 @@
       padding: 0.75rem; overflow: auto; font-size: 0.75rem; max-height: 240px;
     }
     .facturas-list { max-height: 280px; overflow: auto; }
-    .review-layout { display: grid; grid-template-columns: 1fr 340px; gap: 1.25rem; align-items: start; }
-    @media (max-width: 860px) { .review-layout { grid-template-columns: 1fr; } }
-    .review-side {
+    [x-cloak] { display: none !important; }
+    .ocr-split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      align-items: start;
+      margin: 0.5rem 0 0.75rem;
+    }
+    @media (max-width: 720px) { .ocr-split { grid-template-columns: 1fr; } }
+    .ocr-split details { margin: 0; }
+    .ocr-split pre { max-height: 320px; }
+    .ocr-doc {
       background: var(--bg);
       border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 0.75rem;
-      position: sticky;
-      top: 1rem;
+      border-radius: 8px;
+      padding: 0.5rem;
+      text-align: center;
+      position: relative;
     }
-    .review-side h3 { margin: 0 0 0.5rem; font-size: 0.85rem; color: var(--muted); font-weight: 600; }
-    .review-side img, .review-side iframe {
+    .ocr-doc img, .ocr-doc iframe {
       width: 100%;
-      max-height: 70vh;
+      max-height: 300px;
+      object-fit: contain;
       border: 0;
       border-radius: 6px;
       background: #fff;
-      object-fit: contain;
+      cursor: zoom-in;
+      display: block;
+      margin: 0 auto;
     }
-    .review-side .side-empty { color: var(--muted); font-size: 0.8rem; text-align: center; padding: 2rem 0.5rem; }
-    .review-side .side-name {
-      font-size: 0.75rem; color: var(--muted); margin-top: 0.5rem;
-      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    .ocr-doc .zoom-hint {
+      position: absolute;
+      right: 0.75rem;
+      top: 0.75rem;
+      background: rgba(15,23,42,0.75);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.15rem 0.45rem;
+      font-size: 0.7rem;
+      pointer-events: none;
+    }
+    .img-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(2,6,23,0.92);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      padding: 1rem;
+      cursor: zoom-out;
+    }
+    .img-modal img, .img-modal iframe {
+      max-width: 96vw;
+      max-height: 92vh;
+      background: #fff;
+      border-radius: 8px;
+      border: 0;
+      cursor: default;
+      box-shadow: 0 0 0 1px var(--border);
+    }
+    .img-modal .close-zoom {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      background: var(--card);
+      color: var(--text);
+      border: 1px solid var(--border);
     }
   </style>
 </head>
@@ -294,10 +340,27 @@
       Revise los campos con cuidado antes de continuar.
     </div>
     <div class="msg err" x-show="status==='failed'" x-text="error || 'Error procesando'"></div>
-    <details x-show="textoOcr" style="margin:0.5rem 0">
-      <summary class="muted" style="cursor:pointer">Texto OCR (confianza <span x-text="confianzaOcr!=null ? Math.round(confianzaOcr)+'%' : '—'"></span>)</summary>
-      <pre x-text="textoOcr"></pre>
-    </details>
+
+    <div class="ocr-split" x-show="textoOcr || docPreview">
+      <div class="ocr-text">
+        <details x-show="textoOcr">
+          <summary class="muted" style="cursor:pointer">Texto OCR (confianza <span x-text="confianzaOcr!=null ? Math.round(confianzaOcr)+'%' : '—'"></span>)</summary>
+          <pre x-text="textoOcr"></pre>
+        </details>
+        <p class="muted" x-show="!textoOcr">Esperando OCR…</p>
+      </div>
+      <div class="ocr-doc" x-show="docPreview">
+        <span class="zoom-hint">clic para ampliar</span>
+        <template x-if="docPreviewIsPdf">
+          <iframe :src="docPreview" title="Documento cargado"
+                  @click.stop="imgZoom = true" style="cursor:zoom-in"></iframe>
+        </template>
+        <template x-if="docPreview && !docPreviewIsPdf">
+          <img :src="docPreview" alt="Documento cargado" @click="imgZoom = true" />
+        </template>
+        <p class="side-name" x-show="docPreviewName" x-text="docPreviewName" style="margin:0.4rem 0 0"></p>
+      </div>
+    </div>
     <p class="muted" x-show="paginas!=null">Páginas: <span x-text="paginas"></span></p>
 
     <template x-if="status==='completed' && datos">
@@ -411,23 +474,21 @@
         </div>
       </div>
     </template>
-      </div>
-
-      <aside class="review-side">
-        <h3>Documento cargado</h3>
-        <template x-if="docPreview && docPreviewIsPdf">
-          <iframe :src="docPreview" title="Documento cargado"></iframe>
-        </template>
-        <template x-if="docPreview && !docPreviewIsPdf">
-          <img :src="docPreview" alt="Documento cargado" />
-        </template>
-        <template x-if="!docPreview">
-          <div class="side-empty">Sin vista previa local.<br />Vuelva a cargar el archivo para verlo aquí.</div>
-        </template>
-        <p class="side-name" x-show="docPreviewName" x-text="docPreviewName"></p>
-      </aside>
     </div>
   </section>
+
+  <!-- Zoom modal documento -->
+  <div class="img-modal" x-show="imgZoom" x-cloak
+       @click="imgZoom = false" @keydown.escape.window="imgZoom = false" tabindex="-1">
+    <button class="close-zoom" type="button" @click.stop="imgZoom = false">✕ Cerrar</button>
+    <template x-if="imgZoom && docPreviewIsPdf">
+      <iframe :src="docPreview" title="Documento ampliado"
+              @click.stop style="width:90vw;height:90vh"></iframe>
+    </template>
+    <template x-if="imgZoom && docPreview && !docPreviewIsPdf">
+      <img :src="docPreview" alt="Documento ampliado" @click.stop />
+    </template>
+  </div>
 
   <!-- STEP 4: Facturar -->
   <section class="card" x-show="step===4">
@@ -536,6 +597,7 @@ function app() {
     docPreview: null,
     docPreviewName: '',
     docPreviewIsPdf: false,
+    imgZoom: false,
     jwt: localStorage.getItem('ica_jwt') || '',
     form: {
       nit_pagador: '', dv_pagador: '', fecha_transaccion: '', valor_total: '',
@@ -1033,6 +1095,7 @@ function app() {
       this.docPreview = null;
       this.docPreviewName = '';
       this.docPreviewIsPdf = false;
+      this.imgZoom = false;
       this.nitValidado = null;
       this.nitMensaje = null;
       this.facturaResult = null;
