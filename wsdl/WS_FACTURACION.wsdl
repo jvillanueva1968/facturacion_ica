@@ -1,0 +1,1556 @@
+<?xml version="1.0" encoding="utf-8"?>
+<wsdl:definitions xmlns:s="http://www.w3.org/2001/XMLSchema" xmlns:soap12="http://schemas.xmlsoap.org/wsdl/soap12/" xmlns:http="http://schemas.xmlsoap.org/wsdl/http/" xmlns:mime="http://schemas.xmlsoap.org/wsdl/mime/" xmlns:tns="http://microsoft.com" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:tm="http://microsoft.com/wsdl/mime/textMatching/" xmlns:soapenc="http://schemas.xmlsoap.org/soap/encoding/" targetNamespace="http://microsoft.com" xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">
+  <wsdl:types>
+    <s:schema elementFormDefault="qualified" targetNamespace="http://microsoft.com">
+      <s:element name="A_InicioTransaccion">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="1" maxOccurs="1" name="idProyecto" type="s:int" />
+            <s:element minOccurs="0" maxOccurs="1" name="username" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="pass" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="ip" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="proceso" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="A_InicioTransaccionResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="A_InicioTransaccionResult" type="tns:ArrayOfResult" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:complexType name="ArrayOfResult">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="unbounded" name="Result" nillable="true" type="tns:Result" />
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="Result">
+        <s:complexContent mixed="false">
+          <s:extension base="tns:ProyectoTokenE">
+            <s:sequence>
+              <s:element minOccurs="0" maxOccurs="1" name="ListMensajeProyectoToken" type="tns:ArrayOfResult" />
+              <s:element minOccurs="0" maxOccurs="1" name="Id" type="s:string" />
+              <s:element minOccurs="0" maxOccurs="1" name="Mensaje" type="s:string" />
+            </s:sequence>
+          </s:extension>
+        </s:complexContent>
+      </s:complexType>
+      <s:complexType name="ProyectoTokenE">
+        <s:complexContent mixed="false">
+          <s:extension base="tns:ResultadoProyectoTokenE">
+            <s:sequence>
+              <s:element minOccurs="1" maxOccurs="1" name="IdProyecto" type="s:int" />
+              <s:element minOccurs="0" maxOccurs="1" name="Usuario" type="s:string" />
+              <s:element minOccurs="0" maxOccurs="1" name="Clave" type="s:string" />
+              <s:element minOccurs="0" maxOccurs="1" name="Ip" type="s:string" />
+              <s:element minOccurs="0" maxOccurs="1" name="Token" type="s:string" />
+            </s:sequence>
+          </s:extension>
+        </s:complexContent>
+      </s:complexType>
+      <s:complexType name="ResultadoProyectoTokenE">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="1" name="Result" type="tns:ProyectoTokenE" />
+          <s:element minOccurs="1" maxOccurs="1" name="Success" type="s:boolean" />
+          <s:element minOccurs="0" maxOccurs="1" name="Errores" type="tns:ArrayOfResult" />
+        </s:sequence>
+      </s:complexType>
+      <s:element name="M_CrearFactura">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="token" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="username" type="s:string" />
+            <s:element minOccurs="1" maxOccurs="1" name="codigoServicios" type="s:int" />
+            <s:element minOccurs="1" maxOccurs="1" name="idSeccional" type="s:int" />
+            <s:element minOccurs="1" maxOccurs="1" name="idTercero" type="s:int" />
+            <s:element minOccurs="1" maxOccurs="1" name="idFormaPago" type="s:int" />
+            <s:element minOccurs="1" maxOccurs="1" name="cantidad" type="s:int" />
+            <s:element minOccurs="1" maxOccurs="1" name="valor" type="s:decimal" />
+            <s:element minOccurs="1" maxOccurs="1" name="valorTotal" type="s:decimal" />
+            <s:element minOccurs="0" maxOccurs="1" name="IdBanco" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="NumConsignacion" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="Pagos" type="tns:ArrayOfFacturaPagos" />
+            <s:element minOccurs="0" maxOccurs="1" name="Detalles" type="tns:ArrayOfFacturaDetalleE" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:complexType name="ArrayOfFacturaPagos">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="unbounded" name="FacturaPagos" nillable="true" type="tns:FacturaPagos" />
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="FacturaPagos">
+        <s:sequence>
+          <s:element minOccurs="1" maxOccurs="1" name="IdBanco" type="s:int" />
+          <s:element minOccurs="1" maxOccurs="1" name="IdEntidad" nillable="true" type="s:int" />
+          <s:element minOccurs="1" maxOccurs="1" name="IdEntidadesCuentas" nillable="true" type="s:int" />
+          <s:element minOccurs="1" maxOccurs="1" name="IdCiudad" nillable="true" type="s:int" />
+          <s:element minOccurs="1" maxOccurs="1" name="IdDepartamento" nillable="true" type="s:int" />
+          <s:element minOccurs="0" maxOccurs="1" name="NumeroTransaccion" type="s:string" />
+          <s:element minOccurs="1" maxOccurs="1" name="FechaTransaccion" type="s:dateTime" />
+          <s:element minOccurs="1" maxOccurs="1" name="ValorPago" type="s:decimal" />
+          <s:element minOccurs="1" maxOccurs="1" name="FechaCreacion" nillable="true" type="s:dateTime" />
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="ArrayOfFacturaDetalleE">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="unbounded" name="FacturaDetalleE" nillable="true" type="tns:FacturaDetalleE" />
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="FacturaDetalleE">
+        <s:sequence>
+          <s:element minOccurs="1" maxOccurs="1" name="IdCodigoServicio" type="s:int" />
+          <s:element minOccurs="0" maxOccurs="1" name="Anio" type="s:string" />
+          <s:element minOccurs="1" maxOccurs="1" name="ValorTarifa" type="s:decimal" />
+          <s:element minOccurs="1" maxOccurs="1" name="Cantidad" type="s:int" />
+          <s:element minOccurs="1" maxOccurs="1" name="ValorTotal" type="s:decimal" />
+        </s:sequence>
+      </s:complexType>
+      <s:element name="M_CrearFacturaResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="M_CrearFacturaResult" type="tns:ResultadoProyectoFacturacionE" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:complexType name="ResultadoProyectoFacturacionE">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="1" name="NumeroFra" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="estado" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="Result" type="tns:FacturaVenta" />
+          <s:element minOccurs="1" maxOccurs="1" name="Success" type="s:boolean" />
+          <s:element minOccurs="0" maxOccurs="1" name="Errores" type="tns:ArrayOfMensajesFacturacionE" />
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="FacturaVenta">
+        <s:sequence>
+          <s:element minOccurs="1" maxOccurs="1" name="IdFactura" type="s:int" />
+          <s:element minOccurs="0" maxOccurs="1" name="Nrofactura" type="s:string" />
+          <s:element minOccurs="1" maxOccurs="1" name="ValorTotal" type="s:decimal" />
+          <s:element minOccurs="1" maxOccurs="1" name="Cantidad" type="s:int" />
+          <s:element minOccurs="1" maxOccurs="1" name="FechaCrea" nillable="true" type="s:dateTime" />
+          <s:element minOccurs="0" maxOccurs="1" name="Estado" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="NombreTercero" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="NombreBanco" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="NombreEntidad" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="NombreSeccional" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="NombreServicio" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="DescripcionServicio" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="TipoPago" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="NumConsignacion" type="s:string" />
+          <s:element minOccurs="1" maxOccurs="1" name="FechaConsignacion" nillable="true" type="s:dateTime" />
+          <s:element minOccurs="0" maxOccurs="1" name="Observaciones" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="IdTerceros" type="s:string" />
+          <s:element minOccurs="1" maxOccurs="1" name="IdBanco" type="s:int" />
+          <s:element minOccurs="1" maxOccurs="1" name="IdSeccional" type="s:int" />
+          <s:element minOccurs="1" maxOccurs="1" name="IdCodigoServicios" type="s:int" />
+          <s:element minOccurs="1" maxOccurs="1" name="idFormaPago" type="s:int" />
+          <s:element minOccurs="1" maxOccurs="1" name="IdProyecto" type="s:int" />
+          <s:element minOccurs="0" maxOccurs="1" name="NombreProyecto" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="MensajeProyectoToken" type="tns:ArrayOfMensajesFacturacionE" />
+          <s:element minOccurs="0" maxOccurs="1" name="FacturaDetalles" type="tns:ArrayOfFacturaDetalle" />
+          <s:element minOccurs="0" maxOccurs="1" name="FacturaPagos" type="tns:ArrayOfFacturaPagosReturn" />
+          <s:element minOccurs="0" maxOccurs="1" name="CodigoBarras" type="s:string" />
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="ArrayOfMensajesFacturacionE">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="unbounded" name="MensajesFacturacionE" nillable="true" type="tns:MensajesFacturacionE" />
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="MensajesFacturacionE">
+        <s:sequence>
+          <s:element minOccurs="1" maxOccurs="1" name="IdMensaje" type="s:int" />
+          <s:element minOccurs="0" maxOccurs="1" name="Descripcion" type="s:string" />
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="ArrayOfFacturaDetalle">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="unbounded" name="FacturaDetalle" nillable="true" type="tns:FacturaDetalle" />
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="FacturaDetalle">
+        <s:sequence>
+          <s:element minOccurs="1" maxOccurs="1" name="IdDetalleFactura" type="s:int" />
+          <s:element minOccurs="1" maxOccurs="1" name="IdFacturaventa" type="s:int" />
+          <s:element minOccurs="1" maxOccurs="1" name="IdGrupoCodServicios" type="s:int" />
+          <s:element minOccurs="1" maxOccurs="1" name="IdCodServicios" type="s:int" />
+          <s:element minOccurs="0" maxOccurs="1" name="DescripcionServicio" type="s:string" />
+          <s:element minOccurs="1" maxOccurs="1" name="Valor" type="s:decimal" />
+          <s:element minOccurs="1" maxOccurs="1" name="Cantidad" type="s:int" />
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="ArrayOfFacturaPagosReturn">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="unbounded" name="FacturaPagosReturn" nillable="true" type="tns:FacturaPagosReturn" />
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="FacturaPagosReturn">
+        <s:sequence>
+          <s:element minOccurs="1" maxOccurs="1" name="IdPago" nillable="true" type="s:int" />
+          <s:element minOccurs="1" maxOccurs="1" name="IdBanco" type="s:int" />
+          <s:element minOccurs="0" maxOccurs="1" name="Banco" type="s:string" />
+          <s:element minOccurs="1" maxOccurs="1" name="IdEntidad" nillable="true" type="s:int" />
+          <s:element minOccurs="0" maxOccurs="1" name="Entidad" type="s:string" />
+          <s:element minOccurs="1" maxOccurs="1" name="IdEntidadesCuentas" nillable="true" type="s:int" />
+          <s:element minOccurs="0" maxOccurs="1" name="NumeroCuenta" type="s:string" />
+          <s:element minOccurs="1" maxOccurs="1" name="IdCiudad" nillable="true" type="s:int" />
+          <s:element minOccurs="0" maxOccurs="1" name="Ciudad" type="s:string" />
+          <s:element minOccurs="1" maxOccurs="1" name="IdDepartamento" nillable="true" type="s:int" />
+          <s:element minOccurs="0" maxOccurs="1" name="Departamento" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="NumeroTransaccion" type="s:string" />
+          <s:element minOccurs="1" maxOccurs="1" name="FechaTransaccion" type="s:dateTime" />
+          <s:element minOccurs="1" maxOccurs="1" name="FechaCreacion" nillable="true" type="s:dateTime" />
+          <s:element minOccurs="1" maxOccurs="1" name="ValorPago" type="s:decimal" />
+        </s:sequence>
+      </s:complexType>
+      <s:element name="M_CrearFacturaAlterna">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="token" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="username" type="s:string" />
+            <s:element minOccurs="1" maxOccurs="1" name="codigoServicios" type="s:int" />
+            <s:element minOccurs="1" maxOccurs="1" name="idSeccional" type="s:int" />
+            <s:element minOccurs="1" maxOccurs="1" name="idTercero" type="s:int" />
+            <s:element minOccurs="1" maxOccurs="1" name="idFormaPago" type="s:int" />
+            <s:element minOccurs="1" maxOccurs="1" name="cantidad" type="s:int" />
+            <s:element minOccurs="1" maxOccurs="1" name="valor" type="s:decimal" />
+            <s:element minOccurs="1" maxOccurs="1" name="valorTotal" type="s:decimal" />
+            <s:element minOccurs="0" maxOccurs="1" name="IdBanco" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="NumConsignacion" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="Pagos" type="tns:ArrayOfFacturaPagos" />
+            <s:element minOccurs="0" maxOccurs="1" name="Detalles" type="tns:ArrayOfFacturaDetalleE" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="M_CrearFacturaAlternaResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="M_CrearFacturaAlternaResult" type="tns:ResultadoProyectoFacturacionE" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="M_CrearFacturaAlternaAnio">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="token" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="username" type="s:string" />
+            <s:element minOccurs="1" maxOccurs="1" name="codigoServicios" type="s:int" />
+            <s:element minOccurs="1" maxOccurs="1" name="idSeccional" type="s:int" />
+            <s:element minOccurs="1" maxOccurs="1" name="idTercero" type="s:int" />
+            <s:element minOccurs="1" maxOccurs="1" name="idFormaPago" type="s:int" />
+            <s:element minOccurs="1" maxOccurs="1" name="cantidad" type="s:int" />
+            <s:element minOccurs="1" maxOccurs="1" name="valor" type="s:decimal" />
+            <s:element minOccurs="1" maxOccurs="1" name="valorTotal" type="s:decimal" />
+            <s:element minOccurs="1" maxOccurs="1" name="anio" type="s:int" />
+            <s:element minOccurs="1" maxOccurs="1" name="FechaPago" type="s:dateTime" />
+            <s:element minOccurs="0" maxOccurs="1" name="ticketID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="IdBanco" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="NumConsignacion" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="Pagos" type="tns:ArrayOfFacturaPagos" />
+            <s:element minOccurs="0" maxOccurs="1" name="Detalles" type="tns:ArrayOfFacturaDetalleE" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="M_CrearFacturaAlternaAnioResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="M_CrearFacturaAlternaAnioResult" type="tns:ResultadoProyectoFacturacionE" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="N_ActualizaEstadoFacturaTicket">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="token" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="nroFactura" type="s:string" />
+            <s:element minOccurs="1" maxOccurs="1" name="estado" type="s:int" />
+            <s:element minOccurs="1" maxOccurs="1" name="TicketID" type="s:int" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="N_ActualizaEstadoFacturaTicketResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="N_ActualizaEstadoFacturaTicketResult" type="tns:ResultadoProyectoFacturacionE" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="N_ActualizaFacturaPagosTCredito">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="token" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="nroFactura" type="s:string" />
+            <s:element minOccurs="1" maxOccurs="1" name="estado" type="s:int" />
+            <s:element minOccurs="1" maxOccurs="1" name="TicketID" type="s:int" />
+            <s:element minOccurs="1" maxOccurs="1" name="valorTotal" type="s:int" />
+            <s:element minOccurs="0" maxOccurs="1" name="TransacionIDPago" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="FechaTransaccion" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="N_ActualizaFacturaPagosTCreditoResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="N_ActualizaFacturaPagosTCreditoResult" type="tns:ResultadoProyectoFacturacionE" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="T_ActualizaEstadoFactura">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="token" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="nroFactura" type="s:string" />
+            <s:element minOccurs="1" maxOccurs="1" name="estado" type="s:int" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="T_ActualizaEstadoFacturaResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="T_ActualizaEstadoFacturaResult" type="tns:ResultadoProyectoFacturacionE" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="O_ConsultaFactura">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="token" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="nroFactura" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="nroConsignacion" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="idEntidad" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="O_ConsultaFacturaResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="O_ConsultaFacturaResult" type="tns:ResultadoProyectoFacturacionE" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="B_ConsultaBancos">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="token" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="B_ConsultaBancosResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="B_ConsultaBancosResult" type="tns:ResultadoConsultasE" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:complexType name="ResultadoConsultasE">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="1" name="Result" type="tns:ArrayOfConsultasE" />
+          <s:element minOccurs="1" maxOccurs="1" name="Success" type="s:boolean" />
+          <s:element minOccurs="0" maxOccurs="1" name="Errores" type="tns:ArrayOfMensajesFacturacionE" />
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="ArrayOfConsultasE">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="unbounded" name="ConsultasE" nillable="true" type="tns:ConsultasE" />
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="ConsultasE">
+        <s:sequence>
+          <s:element minOccurs="1" maxOccurs="1" name="Id" type="s:int" />
+          <s:element minOccurs="0" maxOccurs="1" name="Nombre" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="NitCc" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="IdDepartamento" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="CodigoDane" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="Id_tipo_doc" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="Tipo_Documento" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="TIPO_PERSONA" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="GRAN_CONTRIBUYENTE" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="AUTORRETENEDOR" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="REGIMEN_COMUN" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="REGIMEN_SIMPLIFICADO" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="TELEFONO" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="EMAIL" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="REPRESENTANTE_LEGAL" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="ID_DEPARTAMENTO" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="DEPARTAMENTO" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="ID_CIUDAD" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="CIUDAD" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="ID_PAIS" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="PAIS" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="COD_ISO" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="COD_DANE_DPTO" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="COD_DANE_CIUDAD" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="PRIMER_NOMBRE" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="SEGUNDO_NOMBRE" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="PRIMER_APELLIDO" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="SEGUNDO_APELLIDO" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="CODIGO_SERVICIO" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="ANIO" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="VALOR" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="ACTIVO" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="ListaCuentas" type="tns:ArrayOfCuentaE" />
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="ArrayOfCuentaE">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="unbounded" name="CuentaE" nillable="true" type="tns:CuentaE" />
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="CuentaE">
+        <s:sequence>
+          <s:element minOccurs="1" maxOccurs="1" name="IdCuenta" type="s:int" />
+          <s:element minOccurs="0" maxOccurs="1" name="NroCuenta" type="s:string" />
+        </s:sequence>
+      </s:complexType>
+      <s:element name="R_ConsultaFormasPago">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="token" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="R_ConsultaFormasPagoResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="R_ConsultaFormasPagoResult" type="tns:ResultadoConsultasE" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="C_ConsultaSeccional">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="token" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="C_ConsultaSeccionalResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="C_ConsultaSeccionalResult" type="tns:ResultadoConsultasE" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="D_ConsultaServicio">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="token" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="D_ConsultaServicioResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="D_ConsultaServicioResult" type="tns:ResultadoConsultasE" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="E_ConsultaTercero">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="token" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="documento" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="E_ConsultaTerceroResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="E_ConsultaTerceroResult" type="tns:ResultadoConsultasE" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="E_ConsultaTerceroEstado">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="token" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="documento" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="E_ConsultaTerceroEstadoResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="E_ConsultaTerceroEstadoResult" type="tns:ResultadoConsultasE" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="F_CrearTercero">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="token" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="idTipoDocumento" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="idTipoPersona" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="granContribuyente" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="autorretenedor" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="regimenComun" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="regimenSimplificado" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="nroIdentificacion" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="nombreRazonSocial" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="idDepartamento" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="idCiudad" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="direccionPrincipal" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="telefono" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="email" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="representanteLegal" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="primernombre" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="segundonombre" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="primerapellido" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="segundoapellido" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="F_CrearTerceroResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="F_CrearTerceroResult" type="tns:ResultadoConsultasE" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="G_ConsultaFormaDePagos">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="token" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="G_ConsultaFormaDePagosResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="G_ConsultaFormaDePagosResult" type="tns:ResultadoConsultasE" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="H_ConsultaTipoDocumentos">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="token" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="H_ConsultaTipoDocumentosResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="H_ConsultaTipoDocumentosResult" type="tns:ResultadoConsultasE" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="S_ConsultaPais">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="token" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="S_ConsultaPaisResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="S_ConsultaPaisResult" type="tns:ResultadoConsultasE" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="I_ConsultaDepartamentos">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="token" type="s:string" />
+            <s:element minOccurs="1" maxOccurs="1" name="codigoDane" type="s:int" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="I_ConsultaDepartamentosResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="I_ConsultaDepartamentosResult" type="tns:ResultadoConsultasE" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="I1_ConsultaDepartamentos_pais">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="token" type="s:string" />
+            <s:element minOccurs="1" maxOccurs="1" name="id_pais" type="s:int" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="I1_ConsultaDepartamentos_paisResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="I1_ConsultaDepartamentos_paisResult" type="tns:ResultadoConsultasE" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="J_ConsultaCiudades">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="token" type="s:string" />
+            <s:element minOccurs="1" maxOccurs="1" name="codigoDane" type="s:int" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="J_ConsultaCiudadesResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="J_ConsultaCiudadesResult" type="tns:ResultadoConsultasE" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="J1_ConsultaCiudades_pais">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="token" type="s:string" />
+            <s:element minOccurs="1" maxOccurs="1" name="id_pais" type="s:int" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="J1_ConsultaCiudades_paisResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="J1_ConsultaCiudades_paisResult" type="tns:ResultadoConsultasE" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="K_ConsultaEstados">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="token" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="K_ConsultaEstadosResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="K_ConsultaEstadosResult" type="tns:ResultadoConsultasE" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="L_ConsultaTiposPersona">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="token" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="L_ConsultaTiposPersonaResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="L_ConsultaTiposPersonaResult" type="tns:ResultadoConsultasE" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="Y_ModificarFechaPago">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="token" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="idProyecto" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="Numero_Factura" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="Fecha" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="Y_ModificarFechaPagoResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="Y_ModificarFechaPagoResult" type="tns:ResultadoConsultasE" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="Z_ConsultaFacturaConsignacion">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="token" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="id_Proyecto" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="NumeroConsignacion" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="FechaCreacion" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="IdBanco" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="Ticket" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="Z_ConsultaFacturaConsignacionResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="Z_ConsultaFacturaConsignacionResult" type="tns:ResultadoProyectoFacturacionC" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:complexType name="ResultadoProyectoFacturacionC">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="1" name="NumeroFra" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="estado" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="Result" type="tns:ArrayOfFacturasCDetalles" />
+          <s:element minOccurs="1" maxOccurs="1" name="Success" type="s:boolean" />
+          <s:element minOccurs="0" maxOccurs="1" name="Errores" type="tns:ArrayOfMensajesFacturacionE" />
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="ArrayOfFacturasCDetalles">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="unbounded" name="FacturasCDetalles" nillable="true" type="tns:FacturasCDetalles" />
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="FacturasCDetalles">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="1" name="IdFacturaVenta" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="IdBanco" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="IdEntidad" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="IdFactura" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="NombreRazonSocial" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="Banco" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="Seccional" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="Grupo" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="CodigoServicio" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="DescripcionServicio" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="Valor" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="Cantidad" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="ValorTotal" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="TipoPago" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="FechaCreacion" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="Estado" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="NumeroConsignacion" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="FechaConsignacion" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="Entidad" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="Observaciones" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="IdTercero" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="IdSeccional" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="IdCodigo" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="IdProyecto" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="TicketId" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="NombreProyecto" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="FacturaDetallesConsiganacion" type="tns:ArrayOfFacturaDetalleC" />
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="ArrayOfFacturaDetalleC">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="unbounded" name="FacturaDetalleC" nillable="true" type="tns:FacturaDetalleC" />
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="FacturaDetalleC">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="1" name="IdFactura" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="IdBanco" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="IdEntidad" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="Entidad" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="NumeroTransaccion" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="FechaTransaccion" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="Valor" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="FechaCreacion" type="s:string" />
+        </s:sequence>
+      </s:complexType>
+      <s:element name="P_ImprimirFactura">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="token" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="nroFactura" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="P_ImprimirFacturaResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="P_ImprimirFacturaResult" type="tns:FacturaImpresa" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:complexType name="FacturaImpresa">
+        <s:sequence>
+          <s:element minOccurs="1" maxOccurs="1" name="Success" type="s:boolean" />
+          <s:element minOccurs="0" maxOccurs="1" name="Result" type="s:base64Binary" />
+          <s:element minOccurs="0" maxOccurs="1" name="Errores" type="tns:ArrayOfMensajesFacturacionE" />
+        </s:sequence>
+      </s:complexType>
+      <s:element name="P1_ImprimirFacturaLinea">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="token" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="nroFactura" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="P1_ImprimirFacturaLineaResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="P1_ImprimirFacturaLineaResult" type="tns:FacturaImpresa" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="X_ActualizarTercero">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="token" type="s:string" />
+            <s:element minOccurs="1" maxOccurs="1" name="idTercero" type="s:int" />
+            <s:element minOccurs="1" maxOccurs="1" name="idTipoDocumento" type="s:int" />
+            <s:element minOccurs="1" maxOccurs="1" name="idTipoPersona" type="s:int" />
+            <s:element minOccurs="1" maxOccurs="1" name="granContribuyente" type="s:int" />
+            <s:element minOccurs="1" maxOccurs="1" name="autorretenedor" type="s:int" />
+            <s:element minOccurs="1" maxOccurs="1" name="regimenComun" type="s:int" />
+            <s:element minOccurs="1" maxOccurs="1" name="regimenSimplificado" type="s:int" />
+            <s:element minOccurs="0" maxOccurs="1" name="nroIdentificacion" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="nombreRazonSocial" type="s:string" />
+            <s:element minOccurs="1" maxOccurs="1" name="idDepartamento" type="s:int" />
+            <s:element minOccurs="1" maxOccurs="1" name="idCiudad" type="s:int" />
+            <s:element minOccurs="0" maxOccurs="1" name="direccionPrincipal" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="telefono" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="email" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="representanteLegal" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="primernombre" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="segundonombre" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="primerapellido" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="segundoapellido" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="X_ActualizarTerceroResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="X_ActualizarTerceroResult" type="tns:ResultadoConsultasE" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="Q_Consulta_FacturaEstadoInicial">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="token" type="s:string" />
+            <s:element minOccurs="1" maxOccurs="1" name="idProyecto" type="s:int" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="Q_Consulta_FacturaEstadoInicialResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="Q_Consulta_FacturaEstadoInicialResult" type="tns:ResultadoFacturasSNRI" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:complexType name="ResultadoFacturasSNRI">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="1" name="Result" type="tns:ArrayOfFacturaSNRI" />
+          <s:element minOccurs="1" maxOccurs="1" name="Success" type="s:boolean" />
+          <s:element minOccurs="0" maxOccurs="1" name="Errores" type="tns:ArrayOfMensajesFacturacionE" />
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="ArrayOfFacturaSNRI">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="unbounded" name="FacturaSNRI" nillable="true" type="tns:FacturaSNRI" />
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="FacturaSNRI">
+        <s:sequence>
+          <s:element minOccurs="1" maxOccurs="1" name="IdFactura" type="s:int" />
+          <s:element minOccurs="0" maxOccurs="1" name="NumeroFactura" type="s:string" />
+          <s:element minOccurs="1" maxOccurs="1" name="Estado" type="s:int" />
+        </s:sequence>
+      </s:complexType>
+      <s:element name="Q1_Consulta_Factura_Info_Tercero">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="token" type="s:string" />
+            <s:element minOccurs="1" maxOccurs="1" name="idFactura" type="s:int" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="Q1_Consulta_Factura_Info_TerceroResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="Q1_Consulta_Factura_Info_TerceroResult" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="U_ObtenerInformacionUsuarioDIAN">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="token" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="identificacion" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="nrverificacion" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="U_ObtenerInformacionUsuarioDIANResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="U_ObtenerInformacionUsuarioDIANResult" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="V_Ping">
+        <s:complexType />
+      </s:element>
+      <s:element name="V_PingResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="V_PingResult" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+    </s:schema>
+  </wsdl:types>
+  <wsdl:message name="A_InicioTransaccionSoapIn">
+    <wsdl:part name="parameters" element="tns:A_InicioTransaccion" />
+  </wsdl:message>
+  <wsdl:message name="A_InicioTransaccionSoapOut">
+    <wsdl:part name="parameters" element="tns:A_InicioTransaccionResponse" />
+  </wsdl:message>
+  <wsdl:message name="M_CrearFacturaSoapIn">
+    <wsdl:part name="parameters" element="tns:M_CrearFactura" />
+  </wsdl:message>
+  <wsdl:message name="M_CrearFacturaSoapOut">
+    <wsdl:part name="parameters" element="tns:M_CrearFacturaResponse" />
+  </wsdl:message>
+  <wsdl:message name="M_CrearFacturaAlternaSoapIn">
+    <wsdl:part name="parameters" element="tns:M_CrearFacturaAlterna" />
+  </wsdl:message>
+  <wsdl:message name="M_CrearFacturaAlternaSoapOut">
+    <wsdl:part name="parameters" element="tns:M_CrearFacturaAlternaResponse" />
+  </wsdl:message>
+  <wsdl:message name="M_CrearFacturaAlternaAnioSoapIn">
+    <wsdl:part name="parameters" element="tns:M_CrearFacturaAlternaAnio" />
+  </wsdl:message>
+  <wsdl:message name="M_CrearFacturaAlternaAnioSoapOut">
+    <wsdl:part name="parameters" element="tns:M_CrearFacturaAlternaAnioResponse" />
+  </wsdl:message>
+  <wsdl:message name="N_ActualizaEstadoFacturaTicketSoapIn">
+    <wsdl:part name="parameters" element="tns:N_ActualizaEstadoFacturaTicket" />
+  </wsdl:message>
+  <wsdl:message name="N_ActualizaEstadoFacturaTicketSoapOut">
+    <wsdl:part name="parameters" element="tns:N_ActualizaEstadoFacturaTicketResponse" />
+  </wsdl:message>
+  <wsdl:message name="N_ActualizaFacturaPagosTCreditoSoapIn">
+    <wsdl:part name="parameters" element="tns:N_ActualizaFacturaPagosTCredito" />
+  </wsdl:message>
+  <wsdl:message name="N_ActualizaFacturaPagosTCreditoSoapOut">
+    <wsdl:part name="parameters" element="tns:N_ActualizaFacturaPagosTCreditoResponse" />
+  </wsdl:message>
+  <wsdl:message name="T_ActualizaEstadoFacturaSoapIn">
+    <wsdl:part name="parameters" element="tns:T_ActualizaEstadoFactura" />
+  </wsdl:message>
+  <wsdl:message name="T_ActualizaEstadoFacturaSoapOut">
+    <wsdl:part name="parameters" element="tns:T_ActualizaEstadoFacturaResponse" />
+  </wsdl:message>
+  <wsdl:message name="O_ConsultaFacturaSoapIn">
+    <wsdl:part name="parameters" element="tns:O_ConsultaFactura" />
+  </wsdl:message>
+  <wsdl:message name="O_ConsultaFacturaSoapOut">
+    <wsdl:part name="parameters" element="tns:O_ConsultaFacturaResponse" />
+  </wsdl:message>
+  <wsdl:message name="B_ConsultaBancosSoapIn">
+    <wsdl:part name="parameters" element="tns:B_ConsultaBancos" />
+  </wsdl:message>
+  <wsdl:message name="B_ConsultaBancosSoapOut">
+    <wsdl:part name="parameters" element="tns:B_ConsultaBancosResponse" />
+  </wsdl:message>
+  <wsdl:message name="R_ConsultaFormasPagoSoapIn">
+    <wsdl:part name="parameters" element="tns:R_ConsultaFormasPago" />
+  </wsdl:message>
+  <wsdl:message name="R_ConsultaFormasPagoSoapOut">
+    <wsdl:part name="parameters" element="tns:R_ConsultaFormasPagoResponse" />
+  </wsdl:message>
+  <wsdl:message name="C_ConsultaSeccionalSoapIn">
+    <wsdl:part name="parameters" element="tns:C_ConsultaSeccional" />
+  </wsdl:message>
+  <wsdl:message name="C_ConsultaSeccionalSoapOut">
+    <wsdl:part name="parameters" element="tns:C_ConsultaSeccionalResponse" />
+  </wsdl:message>
+  <wsdl:message name="D_ConsultaServicioSoapIn">
+    <wsdl:part name="parameters" element="tns:D_ConsultaServicio" />
+  </wsdl:message>
+  <wsdl:message name="D_ConsultaServicioSoapOut">
+    <wsdl:part name="parameters" element="tns:D_ConsultaServicioResponse" />
+  </wsdl:message>
+  <wsdl:message name="E_ConsultaTerceroSoapIn">
+    <wsdl:part name="parameters" element="tns:E_ConsultaTercero" />
+  </wsdl:message>
+  <wsdl:message name="E_ConsultaTerceroSoapOut">
+    <wsdl:part name="parameters" element="tns:E_ConsultaTerceroResponse" />
+  </wsdl:message>
+  <wsdl:message name="E_ConsultaTerceroEstadoSoapIn">
+    <wsdl:part name="parameters" element="tns:E_ConsultaTerceroEstado" />
+  </wsdl:message>
+  <wsdl:message name="E_ConsultaTerceroEstadoSoapOut">
+    <wsdl:part name="parameters" element="tns:E_ConsultaTerceroEstadoResponse" />
+  </wsdl:message>
+  <wsdl:message name="F_CrearTerceroSoapIn">
+    <wsdl:part name="parameters" element="tns:F_CrearTercero" />
+  </wsdl:message>
+  <wsdl:message name="F_CrearTerceroSoapOut">
+    <wsdl:part name="parameters" element="tns:F_CrearTerceroResponse" />
+  </wsdl:message>
+  <wsdl:message name="G_ConsultaFormaDePagosSoapIn">
+    <wsdl:part name="parameters" element="tns:G_ConsultaFormaDePagos" />
+  </wsdl:message>
+  <wsdl:message name="G_ConsultaFormaDePagosSoapOut">
+    <wsdl:part name="parameters" element="tns:G_ConsultaFormaDePagosResponse" />
+  </wsdl:message>
+  <wsdl:message name="H_ConsultaTipoDocumentosSoapIn">
+    <wsdl:part name="parameters" element="tns:H_ConsultaTipoDocumentos" />
+  </wsdl:message>
+  <wsdl:message name="H_ConsultaTipoDocumentosSoapOut">
+    <wsdl:part name="parameters" element="tns:H_ConsultaTipoDocumentosResponse" />
+  </wsdl:message>
+  <wsdl:message name="S_ConsultaPaisSoapIn">
+    <wsdl:part name="parameters" element="tns:S_ConsultaPais" />
+  </wsdl:message>
+  <wsdl:message name="S_ConsultaPaisSoapOut">
+    <wsdl:part name="parameters" element="tns:S_ConsultaPaisResponse" />
+  </wsdl:message>
+  <wsdl:message name="I_ConsultaDepartamentosSoapIn">
+    <wsdl:part name="parameters" element="tns:I_ConsultaDepartamentos" />
+  </wsdl:message>
+  <wsdl:message name="I_ConsultaDepartamentosSoapOut">
+    <wsdl:part name="parameters" element="tns:I_ConsultaDepartamentosResponse" />
+  </wsdl:message>
+  <wsdl:message name="I1_ConsultaDepartamentos_paisSoapIn">
+    <wsdl:part name="parameters" element="tns:I1_ConsultaDepartamentos_pais" />
+  </wsdl:message>
+  <wsdl:message name="I1_ConsultaDepartamentos_paisSoapOut">
+    <wsdl:part name="parameters" element="tns:I1_ConsultaDepartamentos_paisResponse" />
+  </wsdl:message>
+  <wsdl:message name="J_ConsultaCiudadesSoapIn">
+    <wsdl:part name="parameters" element="tns:J_ConsultaCiudades" />
+  </wsdl:message>
+  <wsdl:message name="J_ConsultaCiudadesSoapOut">
+    <wsdl:part name="parameters" element="tns:J_ConsultaCiudadesResponse" />
+  </wsdl:message>
+  <wsdl:message name="J1_ConsultaCiudades_paisSoapIn">
+    <wsdl:part name="parameters" element="tns:J1_ConsultaCiudades_pais" />
+  </wsdl:message>
+  <wsdl:message name="J1_ConsultaCiudades_paisSoapOut">
+    <wsdl:part name="parameters" element="tns:J1_ConsultaCiudades_paisResponse" />
+  </wsdl:message>
+  <wsdl:message name="K_ConsultaEstadosSoapIn">
+    <wsdl:part name="parameters" element="tns:K_ConsultaEstados" />
+  </wsdl:message>
+  <wsdl:message name="K_ConsultaEstadosSoapOut">
+    <wsdl:part name="parameters" element="tns:K_ConsultaEstadosResponse" />
+  </wsdl:message>
+  <wsdl:message name="L_ConsultaTiposPersonaSoapIn">
+    <wsdl:part name="parameters" element="tns:L_ConsultaTiposPersona" />
+  </wsdl:message>
+  <wsdl:message name="L_ConsultaTiposPersonaSoapOut">
+    <wsdl:part name="parameters" element="tns:L_ConsultaTiposPersonaResponse" />
+  </wsdl:message>
+  <wsdl:message name="Y_ModificarFechaPagoSoapIn">
+    <wsdl:part name="parameters" element="tns:Y_ModificarFechaPago" />
+  </wsdl:message>
+  <wsdl:message name="Y_ModificarFechaPagoSoapOut">
+    <wsdl:part name="parameters" element="tns:Y_ModificarFechaPagoResponse" />
+  </wsdl:message>
+  <wsdl:message name="Z_ConsultaFacturaConsignacionSoapIn">
+    <wsdl:part name="parameters" element="tns:Z_ConsultaFacturaConsignacion" />
+  </wsdl:message>
+  <wsdl:message name="Z_ConsultaFacturaConsignacionSoapOut">
+    <wsdl:part name="parameters" element="tns:Z_ConsultaFacturaConsignacionResponse" />
+  </wsdl:message>
+  <wsdl:message name="P_ImprimirFacturaSoapIn">
+    <wsdl:part name="parameters" element="tns:P_ImprimirFactura" />
+  </wsdl:message>
+  <wsdl:message name="P_ImprimirFacturaSoapOut">
+    <wsdl:part name="parameters" element="tns:P_ImprimirFacturaResponse" />
+  </wsdl:message>
+  <wsdl:message name="P1_ImprimirFacturaLineaSoapIn">
+    <wsdl:part name="parameters" element="tns:P1_ImprimirFacturaLinea" />
+  </wsdl:message>
+  <wsdl:message name="P1_ImprimirFacturaLineaSoapOut">
+    <wsdl:part name="parameters" element="tns:P1_ImprimirFacturaLineaResponse" />
+  </wsdl:message>
+  <wsdl:message name="X_ActualizarTerceroSoapIn">
+    <wsdl:part name="parameters" element="tns:X_ActualizarTercero" />
+  </wsdl:message>
+  <wsdl:message name="X_ActualizarTerceroSoapOut">
+    <wsdl:part name="parameters" element="tns:X_ActualizarTerceroResponse" />
+  </wsdl:message>
+  <wsdl:message name="Q_Consulta_FacturaEstadoInicialSoapIn">
+    <wsdl:part name="parameters" element="tns:Q_Consulta_FacturaEstadoInicial" />
+  </wsdl:message>
+  <wsdl:message name="Q_Consulta_FacturaEstadoInicialSoapOut">
+    <wsdl:part name="parameters" element="tns:Q_Consulta_FacturaEstadoInicialResponse" />
+  </wsdl:message>
+  <wsdl:message name="Q1_Consulta_Factura_Info_TerceroSoapIn">
+    <wsdl:part name="parameters" element="tns:Q1_Consulta_Factura_Info_Tercero" />
+  </wsdl:message>
+  <wsdl:message name="Q1_Consulta_Factura_Info_TerceroSoapOut">
+    <wsdl:part name="parameters" element="tns:Q1_Consulta_Factura_Info_TerceroResponse" />
+  </wsdl:message>
+  <wsdl:message name="U_ObtenerInformacionUsuarioDIANSoapIn">
+    <wsdl:part name="parameters" element="tns:U_ObtenerInformacionUsuarioDIAN" />
+  </wsdl:message>
+  <wsdl:message name="U_ObtenerInformacionUsuarioDIANSoapOut">
+    <wsdl:part name="parameters" element="tns:U_ObtenerInformacionUsuarioDIANResponse" />
+  </wsdl:message>
+  <wsdl:message name="V_PingSoapIn">
+    <wsdl:part name="parameters" element="tns:V_Ping" />
+  </wsdl:message>
+  <wsdl:message name="V_PingSoapOut">
+    <wsdl:part name="parameters" element="tns:V_PingResponse" />
+  </wsdl:message>
+  <wsdl:portType name="ServicioFacturacionSoap">
+    <wsdl:operation name="A_InicioTransaccion">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">Método para obtener el token requerido en el consumo de los métodos expuestos por el WebServices de facturación</wsdl:documentation>
+      <wsdl:input message="tns:A_InicioTransaccionSoapIn" />
+      <wsdl:output message="tns:A_InicioTransaccionSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="M_CrearFactura">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">Método que obtiene el número de factura y el ID.</wsdl:documentation>
+      <wsdl:input message="tns:M_CrearFacturaSoapIn" />
+      <wsdl:output message="tns:M_CrearFacturaSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="M_CrearFacturaAlterna">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">Método que crea la factura con un consecutivo alterno y obtiene los datos de la misma.</wsdl:documentation>
+      <wsdl:input message="tns:M_CrearFacturaAlternaSoapIn" />
+      <wsdl:output message="tns:M_CrearFacturaAlternaSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="M_CrearFacturaAlternaAnio">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">Método que crea la factura con un consecutivo alterno y obtiene los datos de la misma.</wsdl:documentation>
+      <wsdl:input message="tns:M_CrearFacturaAlternaAnioSoapIn" />
+      <wsdl:output message="tns:M_CrearFacturaAlternaAnioSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="N_ActualizaEstadoFacturaTicket">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">Método que permite actualizar el estado de la factura por el número de factura y el TicketID.</wsdl:documentation>
+      <wsdl:input message="tns:N_ActualizaEstadoFacturaTicketSoapIn" />
+      <wsdl:output message="tns:N_ActualizaEstadoFacturaTicketSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="N_ActualizaFacturaPagosTCredito">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">Método que permite actualizar el estado de la factura y los pagos asociados(SISPAP - Tarjeta de Credito)</wsdl:documentation>
+      <wsdl:input message="tns:N_ActualizaFacturaPagosTCreditoSoapIn" />
+      <wsdl:output message="tns:N_ActualizaFacturaPagosTCreditoSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="T_ActualizaEstadoFactura">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">Método que permite actualizar el estado de la factura de Pasarela de pagos con el Número de factura.</wsdl:documentation>
+      <wsdl:input message="tns:T_ActualizaEstadoFacturaSoapIn" />
+      <wsdl:output message="tns:T_ActualizaEstadoFacturaSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="O_ConsultaFactura">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">Método que obtiene  La información de la factura, parámetros opcionales No. factura ó No. consignación, Id Banco.</wsdl:documentation>
+      <wsdl:input message="tns:O_ConsultaFacturaSoapIn" />
+      <wsdl:output message="tns:O_ConsultaFacturaSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="B_ConsultaBancos">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">Método para obtener las entidades bancarias</wsdl:documentation>
+      <wsdl:input message="tns:B_ConsultaBancosSoapIn" />
+      <wsdl:output message="tns:B_ConsultaBancosSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="R_ConsultaFormasPago">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">Método para obtener las formas de pago</wsdl:documentation>
+      <wsdl:input message="tns:R_ConsultaFormasPagoSoapIn" />
+      <wsdl:output message="tns:R_ConsultaFormasPagoSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="C_ConsultaSeccional">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">Método para obtener los códigos de las seccionales</wsdl:documentation>
+      <wsdl:input message="tns:C_ConsultaSeccionalSoapIn" />
+      <wsdl:output message="tns:C_ConsultaSeccionalSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="D_ConsultaServicio">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">Método para obtener los códigos de los servicios</wsdl:documentation>
+      <wsdl:input message="tns:D_ConsultaServicioSoapIn" />
+      <wsdl:output message="tns:D_ConsultaServicioSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="E_ConsultaTercero">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">Método para obtener la información del tercero</wsdl:documentation>
+      <wsdl:input message="tns:E_ConsultaTerceroSoapIn" />
+      <wsdl:output message="tns:E_ConsultaTerceroSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="E_ConsultaTerceroEstado">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">Método para obtener la información del tercero y su estado</wsdl:documentation>
+      <wsdl:input message="tns:E_ConsultaTerceroEstadoSoapIn" />
+      <wsdl:output message="tns:E_ConsultaTerceroEstadoSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="F_CrearTercero">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">Método para crear un tercero</wsdl:documentation>
+      <wsdl:input message="tns:F_CrearTerceroSoapIn" />
+      <wsdl:output message="tns:F_CrearTerceroSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="G_ConsultaFormaDePagos">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">Método para obtener las formas de pago</wsdl:documentation>
+      <wsdl:input message="tns:G_ConsultaFormaDePagosSoapIn" />
+      <wsdl:output message="tns:G_ConsultaFormaDePagosSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="H_ConsultaTipoDocumentos">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">Método para obtener los tipos de documentos</wsdl:documentation>
+      <wsdl:input message="tns:H_ConsultaTipoDocumentosSoapIn" />
+      <wsdl:output message="tns:H_ConsultaTipoDocumentosSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="S_ConsultaPais">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">Método para obtener los paises</wsdl:documentation>
+      <wsdl:input message="tns:S_ConsultaPaisSoapIn" />
+      <wsdl:output message="tns:S_ConsultaPaisSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="I_ConsultaDepartamentos">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">Método para obtener los departamentos</wsdl:documentation>
+      <wsdl:input message="tns:I_ConsultaDepartamentosSoapIn" />
+      <wsdl:output message="tns:I_ConsultaDepartamentosSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="I1_ConsultaDepartamentos_pais">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">Método para obtener los departamentos por país</wsdl:documentation>
+      <wsdl:input message="tns:I1_ConsultaDepartamentos_paisSoapIn" />
+      <wsdl:output message="tns:I1_ConsultaDepartamentos_paisSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="J_ConsultaCiudades">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">Método para obtener las ciudades</wsdl:documentation>
+      <wsdl:input message="tns:J_ConsultaCiudadesSoapIn" />
+      <wsdl:output message="tns:J_ConsultaCiudadesSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="J1_ConsultaCiudades_pais">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">Método para obtener las ciudades por país</wsdl:documentation>
+      <wsdl:input message="tns:J1_ConsultaCiudades_paisSoapIn" />
+      <wsdl:output message="tns:J1_ConsultaCiudades_paisSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="K_ConsultaEstados">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">Método para obtener los estados</wsdl:documentation>
+      <wsdl:input message="tns:K_ConsultaEstadosSoapIn" />
+      <wsdl:output message="tns:K_ConsultaEstadosSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="L_ConsultaTiposPersona">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">Método para obtener los tipos de persona</wsdl:documentation>
+      <wsdl:input message="tns:L_ConsultaTiposPersonaSoapIn" />
+      <wsdl:output message="tns:L_ConsultaTiposPersonaSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="Y_ModificarFechaPago">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">Método para actualizar fecha de pago a facturas alternas.</wsdl:documentation>
+      <wsdl:input message="tns:Y_ModificarFechaPagoSoapIn" />
+      <wsdl:output message="tns:Y_ModificarFechaPagoSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="Z_ConsultaFacturaConsignacion">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">Método para consultar Facturas con su Respectivo Detalle</wsdl:documentation>
+      <wsdl:input message="tns:Z_ConsultaFacturaConsignacionSoapIn" />
+      <wsdl:output message="tns:Z_ConsultaFacturaConsignacionSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="P_ImprimirFactura">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">Método que devuelve un arreglo de bytes de la factura creada en el  Sistema Nacional de Recaudo del ICA - SNRI</wsdl:documentation>
+      <wsdl:input message="tns:P_ImprimirFacturaSoapIn" />
+      <wsdl:output message="tns:P_ImprimirFacturaSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="P1_ImprimirFacturaLinea">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">Método que devuelve un arreglo de bytes de la factura en linea creada en el  Sistema Nacional de Recaudo del ICA - SNRI</wsdl:documentation>
+      <wsdl:input message="tns:P1_ImprimirFacturaLineaSoapIn" />
+      <wsdl:output message="tns:P1_ImprimirFacturaLineaSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="X_ActualizarTercero">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">Método para actualizar la información de un tercero</wsdl:documentation>
+      <wsdl:input message="tns:X_ActualizarTerceroSoapIn" />
+      <wsdl:output message="tns:X_ActualizarTerceroSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="Q_Consulta_FacturaEstadoInicial">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">Método que obtiene la informacion de las facturas creadas en SNRI</wsdl:documentation>
+      <wsdl:input message="tns:Q_Consulta_FacturaEstadoInicialSoapIn" />
+      <wsdl:output message="tns:Q_Consulta_FacturaEstadoInicialSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="Q1_Consulta_Factura_Info_Tercero">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">Metodo para obtener la información del tercero asociado a la factura (Pasarela)</wsdl:documentation>
+      <wsdl:input message="tns:Q1_Consulta_Factura_Info_TerceroSoapIn" />
+      <wsdl:output message="tns:Q1_Consulta_Factura_Info_TerceroSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="U_ObtenerInformacionUsuarioDIAN">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">Método para obtener informacion de usuario registrado en la DIAN</wsdl:documentation>
+      <wsdl:input message="tns:U_ObtenerInformacionUsuarioDIANSoapIn" />
+      <wsdl:output message="tns:U_ObtenerInformacionUsuarioDIANSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="V_Ping">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">Método para validar la Disponibilidad del servicio web</wsdl:documentation>
+      <wsdl:input message="tns:V_PingSoapIn" />
+      <wsdl:output message="tns:V_PingSoapOut" />
+    </wsdl:operation>
+  </wsdl:portType>
+  <wsdl:binding name="ServicioFacturacionSoap" type="tns:ServicioFacturacionSoap">
+    <soap:binding transport="http://schemas.xmlsoap.org/soap/http" />
+    <wsdl:operation name="A_InicioTransaccion">
+      <soap:operation soapAction="http://microsoft.com/A_InicioTransaccion" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="M_CrearFactura">
+      <soap:operation soapAction="http://microsoft.com/M_CrearFactura" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="M_CrearFacturaAlterna">
+      <soap:operation soapAction="http://microsoft.com/M_CrearFacturaAlterna" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="M_CrearFacturaAlternaAnio">
+      <soap:operation soapAction="http://microsoft.com/M_CrearFacturaAlternaAnio" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="N_ActualizaEstadoFacturaTicket">
+      <soap:operation soapAction="http://microsoft.com/N_ActualizaEstadoFacturaTicket" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="N_ActualizaFacturaPagosTCredito">
+      <soap:operation soapAction="http://microsoft.com/N_ActualizaFacturaPagosTCredito" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="T_ActualizaEstadoFactura">
+      <soap:operation soapAction="http://microsoft.com/T_ActualizaEstadoFactura" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="O_ConsultaFactura">
+      <soap:operation soapAction="http://microsoft.com/O_ConsultaFactura" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="B_ConsultaBancos">
+      <soap:operation soapAction="http://microsoft.com/B_ConsultaBancos" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="R_ConsultaFormasPago">
+      <soap:operation soapAction="http://microsoft.com/R_ConsultaFormasPago" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="C_ConsultaSeccional">
+      <soap:operation soapAction="http://microsoft.com/C_ConsultaSeccional" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="D_ConsultaServicio">
+      <soap:operation soapAction="http://microsoft.com/D_ConsultaServicio" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="E_ConsultaTercero">
+      <soap:operation soapAction="http://microsoft.com/E_ConsultaTercero" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="E_ConsultaTerceroEstado">
+      <soap:operation soapAction="http://microsoft.com/E_ConsultaTerceroEstado" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="F_CrearTercero">
+      <soap:operation soapAction="http://microsoft.com/F_CrearTercero" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="G_ConsultaFormaDePagos">
+      <soap:operation soapAction="http://microsoft.com/G_ConsultaFormaDePagos" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="H_ConsultaTipoDocumentos">
+      <soap:operation soapAction="http://microsoft.com/H_ConsultaTipoDocumentos" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="S_ConsultaPais">
+      <soap:operation soapAction="http://microsoft.com/S_ConsultaPais" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="I_ConsultaDepartamentos">
+      <soap:operation soapAction="http://microsoft.com/I_ConsultaDepartamentos" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="I1_ConsultaDepartamentos_pais">
+      <soap:operation soapAction="http://microsoft.com/I1_ConsultaDepartamentos_pais" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="J_ConsultaCiudades">
+      <soap:operation soapAction="http://microsoft.com/J_ConsultaCiudades" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="J1_ConsultaCiudades_pais">
+      <soap:operation soapAction="http://microsoft.com/J1_ConsultaCiudades_pais" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="K_ConsultaEstados">
+      <soap:operation soapAction="http://microsoft.com/K_ConsultaEstados" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="L_ConsultaTiposPersona">
+      <soap:operation soapAction="http://microsoft.com/L_ConsultaTiposPersona" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="Y_ModificarFechaPago">
+      <soap:operation soapAction="http://microsoft.com/Y_ModificarFechaPago" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="Z_ConsultaFacturaConsignacion">
+      <soap:operation soapAction="http://microsoft.com/Z_ConsultaFacturaConsignacion" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="P_ImprimirFactura">
+      <soap:operation soapAction="http://microsoft.com/P_ImprimirFactura" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="P1_ImprimirFacturaLinea">
+      <soap:operation soapAction="http://microsoft.com/P1_ImprimirFacturaLinea" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="X_ActualizarTercero">
+      <soap:operation soapAction="http://microsoft.com/X_ActualizarTercero" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="Q_Consulta_FacturaEstadoInicial">
+      <soap:operation soapAction="http://microsoft.com/Q_Consulta_FacturaEstadoInicial" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="Q1_Consulta_Factura_Info_Tercero">
+      <soap:operation soapAction="http://microsoft.com/Q1_Consulta_Factura_Info_Tercero" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="U_ObtenerInformacionUsuarioDIAN">
+      <soap:operation soapAction="http://microsoft.com/U_ObtenerInformacionUsuarioDIAN" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="V_Ping">
+      <soap:operation soapAction="http://microsoft.com/V_Ping" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+  </wsdl:binding>
+  <wsdl:service name="ServicioFacturacion">
+    <wsdl:port name="ServicioFacturacionSoap" binding="tns:ServicioFacturacionSoap">
+      <soap:address location="http://webservices.ica.gov.co/WS_FACTURACION/ServicioFacturacion.asmx" />
+    </wsdl:port>
+  </wsdl:service>
+</wsdl:definitions>

@@ -1,0 +1,158 @@
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: facturacion-ica-api
+    env_file:
+      - ../.env
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../app:/app/app
+      - ../wsdl:/app/wsdl
+      - ../tests:/app/tests
+      - ./uploads:/app/uploads
+      - ../certs:/app/certs:ro
+    environment:
+      - ENVIRONMENT=development
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@db:5432/facturacion
+      - REDIS_URL=redis://redis:6379/0
+      - SNRI_WSDL_LOCAL_PATH=/app/wsdl/WS_FACTURACION.wsdl
+      - SNRI_WSDL_URL=http://webservices.ica.gov.co/WS_FACTURACION/?WSDL
+      - SNRI_CERT_PATH=/app/certs/cliente.p12
+      - SNRI_CERT_PASSWORD=${SNRI_CERT_PASSWORD}
+      - SNRI_TIMEOUT=30
+      - LLM_PROVIDER=ollama
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - OLLAMA_MODEL=llama3.2:3b
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - SIGMA_API_URL=http://sigma-mock/api
+      - SIGMA_API_TOKEN=${SIGMA_API_TOKEN:-dev-sigma-token}
+      - SNRI_DEMO_MODE=${SNRI_DEMO_MODE:-true}
+      - APP_SECRET_KEY=${APP_SECRET_KEY}
+      - UPLOAD_DIR=/app/uploads
+      - MAX_FILE_SIZE=10485760
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+      sigma-mock:
+        condition: service_started
+    networks:
+      - facturacion-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  sigma-mock:
+    build:
+      context: ../sigma_mock
+    container_name: facturacion-sigma-mock
+    ports:
+      - "8080:80"
+    environment:
+      SIGMA_API_TOKEN: ${SIGMA_API_TOKEN:-dev-sigma-token}
+      SIGMA_STORE: /tmp/sigma_mock_store.json
+    networks:
+      - facturacion-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: facturacion-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    networks:
+      - facturacion-net
+    healthcheck:
+      test: ["CMD", "/bin/ollama", "list"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  db:
+    image: postgres:15-alpine
+    container_name: facturacion-db
+    environment:
+      POSTGRES_DB: facturacion
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    networks:
+      - facturacion-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: facturacion-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - facturacion-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: quay.io/minio/minio:RELEASE.2024-01-16T16-07-38Z
+    container_name: facturacion-minio
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - minio-data:/data
+    networks:
+      - facturacion-net
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+volumes:
+  pg-data:
+  redis-data:
+  ollama-data:
+  minio-data:
+
+networks:
+  facturacion-net:
+    driver: bridge

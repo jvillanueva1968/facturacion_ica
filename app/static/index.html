@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Facturación ICA - SNRI</title>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --border: #334155;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --ok: #4ade80;
+      --warn: #fbbf24;
+      --err: #f87171;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    header {
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--card);
+    }
+    header h1 { font-size: 1.1rem; margin: 0; font-weight: 600; }
+    header .health { font-size: 0.85rem; color: var(--muted); }
+    header .health.ok { color: var(--ok); }
+    header .health.bad { color: var(--err); }
+    main { max-width: 960px; margin: 0 auto; padding: 1.5rem; }
+    .steps {
+      display: flex; gap: 0.5rem; margin-bottom: 1.5rem; flex-wrap: wrap;
+    }
+    .step {
+      padding: 0.35rem 0.75rem;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      background: var(--card);
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+    .step.active { border-color: var(--accent); color: var(--accent); }
+    .step.done { border-color: var(--ok); color: var(--ok); }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem;
+      margin-bottom: 1rem;
+    }
+    .card h2 { margin: 0 0 1rem; font-size: 1rem; }
+    .drop {
+      border: 2px dashed var(--border);
+      border-radius: 12px;
+      padding: 2.5rem 1rem;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .drop:hover, .drop.over { border-color: var(--accent); background: rgba(56,189,248,0.06); }
+    .drop p { margin: 0.4rem 0; color: var(--muted); }
+    .drop .hint { font-size: 0.8rem; }
+    button, .btn {
+      background: var(--accent);
+      color: #0f172a;
+      border: none;
+      border-radius: 8px;
+      padding: 0.6rem 1.1rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    button.secondary { background: transparent; color: var(--text); border: 1px solid var(--border); }
+    button.success { background: var(--ok); }
+    .actions { display: flex; gap: 0.6rem; flex-wrap: wrap; margin-top: 1rem; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem 1rem; }
+    @media (max-width: 640px) { .grid { grid-template-columns: 1fr; } }
+    label { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.8rem; color: var(--muted); }
+    input, select, textarea {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 6px;
+      padding: 0.5rem 0.6rem;
+      font-size: 0.9rem;
+    }
+    input:focus, select:focus { outline: 1px solid var(--accent); }
+    .badge {
+      display: inline-block;
+      padding: 0.15rem 0.5rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .badge.ok { background: rgba(74,222,128,0.15); color: var(--ok); }
+    .badge.warn { background: rgba(251,191,36,0.15); color: var(--warn); }
+    .badge.err { background: rgba(248,113,113,0.15); color: var(--err); }
+    .badge.info { background: rgba(56,189,248,0.15); color: var(--accent); }
+    .progress {
+      height: 6px; background: var(--bg); border-radius: 999px; overflow: hidden; margin-top: 0.75rem;
+    }
+    .progress > div {
+      height: 100%; background: var(--accent); width: 40%; animation: slide 1.2s infinite linear;
+    }
+    @keyframes slide {
+      0% { margin-left: -40%; }
+      100% { margin-left: 100%; }
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    th, td { text-align: left; padding: 0.45rem 0.5rem; border-bottom: 1px solid var(--border); }
+    th { color: var(--muted); font-weight: 500; }
+    .msg { padding: 0.75rem 1rem; border-radius: 8px; margin: 0.75rem 0; font-size: 0.9rem; }
+    .msg.ok { background: rgba(74,222,128,0.1); border: 1px solid var(--ok); color: var(--ok); }
+    .msg.err { background: rgba(248,113,113,0.1); border: 1px solid var(--err); color: var(--err); }
+    .msg.info { background: rgba(56,189,248,0.08); border: 1px solid var(--accent); color: var(--accent); }
+    .muted { color: var(--muted); font-size: 0.85rem; }
+    .span2 { grid-column: span 2; }
+    @media (max-width: 640px) { .span2 { grid-column: span 1; } }
+    pre {
+      background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+      padding: 0.75rem; overflow: auto; font-size: 0.75rem; max-height: 240px;
+    }
+    .facturas-list { max-height: 280px; overflow: auto; }
+  </style>
+</head>
+<body x-data="app()" x-init="init()">
+<header>
+  <h1>Facturación Automatizada ICA · SNRI + SIGMA</h1>
+  <div class="health" :class="healthOk ? 'ok' : 'bad'" x-text="healthOk ? 'API OK' : 'API caída'"></div>
+</header>
+
+<main>
+  <div class="steps">
+    <span class="step" :class="{active: step===1, done: step>1}">1. Cargar comprobante</span>
+    <span class="step" :class="{active: step===2, done: step>2}">2. Revisar datos</span>
+    <span class="step" :class="{active: step===3, done: step>3}">3. Facturar</span>
+    <span class="step" :class="{active: step===4}">4. Resultado</span>
+  </div>
+
+  <!-- STEP 1: Upload -->
+  <section class="card" x-show="step===1">
+    <h2>Cargar comprobante de pago</h2>
+    <div class="drop"
+         :class="{over: dragging}"
+         @dragover.prevent="dragging=true"
+         @dragleave.prevent="dragging=false"
+         @drop.prevent="onDrop($event)"
+         @click="$refs.file.click()">
+      <p><strong>Arrastra</strong> imagen o PDF aquí</p>
+      <p class="hint">PNG, JPG o PDF · máx. 10 MB</p>
+      <input type="file" x-ref="file" accept="image/png,image/jpeg,application/pdf"
+             hidden @change="onFile($event.target.files[0])" />
+    </div>
+    <div class="progress" x-show="uploading"><div></div></div>
+    <div class="msg err" x-show="error" x-text="error"></div>
+  </section>
+
+  <!-- STEP 2: Review -->
+  <section class="card" x-show="step===2">
+    <h2>Revisar datos extraídos
+      <span class="badge info" x-show="status==='processing'">Procesando…</span>
+      <span class="badge ok" x-show="status==='completed'">Completado</span>
+      <span class="badge err" x-show="status==='failed'">Falló</span>
+    </h2>
+
+    <div class="progress" x-show="status==='processing'"><div></div></div>
+    <p class="muted" x-show="status==='processing'">OCR → LLM → validación NIT…</p>
+    <div class="msg err" x-show="status==='failed'" x-text="error || 'Error procesando'"></div>
+
+    <template x-if="status==='completed' && datos">
+      <div>
+        <div class="msg" :class="nitValidado ? 'ok' : 'err'"
+             x-text="nitValidado ? ('NIT válido: ' + (nitMensaje||'')) : ('NIT inválido: ' + (nitMensaje||''))">
+        </div>
+
+        <div class="grid">
+          <label>NIT pagador
+            <input x-model="form.nit_pagador" />
+          </label>
+          <label>DV
+            <input x-model="form.dv_pagador" maxlength="1" />
+          </label>
+          <label>Fecha transacción
+            <input type="date" x-model="form.fecha_transaccion" />
+          </label>
+          <label>Valor total
+            <input x-model="form.valor_total" />
+          </label>
+          <label>N° referencia
+            <input x-model="form.numero_referencia" />
+          </label>
+          <label>Banco
+            <input x-model="form.banco" />
+          </label>
+          <label>Forma de pago
+            <select x-model="form.forma_pago">
+              <option>CONSIGNACION</option>
+              <option>TRANSFERENCIA</option>
+              <option>CHEQUE_GERENCIA</option>
+              <option>PSE</option>
+              <option>DATAFONO</option>
+            </select>
+          </label>
+          <label>Nombre / Razón social
+            <input x-model="form.nombre_razon_social" />
+          </label>
+        </div>
+
+        <h2 style="margin-top:1.25rem">Servicios</h2>
+        <table>
+          <thead>
+            <tr><th>Código</th><th>Nombre</th><th>Valor</th></tr>
+          </thead>
+          <tbody>
+            <template x-for="(s, i) in form.servicios" :key="i">
+              <tr>
+                <td><input style="width:110px" x-model="s.codigo" /></td>
+                <td><input style="width:100%" x-model="s.nombre" /></td>
+                <td><input style="width:110px" x-model="s.valor" /></td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+
+        <details style="margin-top:1rem">
+          <summary class="muted" style="cursor:pointer">Campos SNRI (editar si es necesario)</summary>
+          <div class="grid" style="margin-top:0.75rem">
+            <label>id_proyecto <input x-model="form.id_proyecto" /></label>
+            <label>id_seccional <input x-model="form.id_seccional" /></label>
+            <label>id_entidad <input x-model="form.id_entidad" /></label>
+            <label>id_forma_pago <input x-model="form.id_forma_pago" /></label>
+            <label>id_banco <input x-model="form.id_banco" /></label>
+            <label>id_servicio (simple) <input x-model="form.id_servicio" /></label>
+            <label>id_departamento <input x-model="form.id_departamento" /></label>
+            <label>id_ciudad <input x-model="form.id_ciudad" /></label>
+            <label class="span2">dirección <input x-model="form.direccion_principal" /></label>
+          </div>
+        </details>
+
+        <div class="actions">
+          <button class="secondary" @click="reset()">← Otra carga</button>
+          <button class="success" @click="goFacturar()" :disabled="facturando">Continuar a facturación →</button>
+        </div>
+      </div>
+    </template>
+  </section>
+
+  <!-- STEP 3: Facturar -->
+  <section class="card" x-show="step===3">
+    <h2>Confirmar y facturar</h2>
+    <div class="grid">
+      <label>NIT-DV <input :value="form.nit_pagador + '-' + form.dv_pagador" readonly /></label>
+      <label>Beneficiario <input x-model="form.nombre_razon_social" /></label>
+      <label>Referencia <input x-model="form.numero_referencia" readonly /></label>
+      <label>Total <input x-model="form.valor_total" readonly /></label>
+      <label>Token SNRI
+        <input x-model="form.token" placeholder="obtener vía /api/v1/auth/token" />
+      </label>
+      <label>Modo
+        <select x-model="form.modo">
+          <option value="auto">auto (detalle si hay N servicios)</option>
+          <option value="simple">simple (1 servicio)</option>
+          <option value="detalle">detalle (múltiples)</option>
+        </select>
+      </label>
+    </div>
+    <div class="msg info" style="margin-top:1rem">
+      Sin certificado/credenciales SNRI reales, activa <code>SNRI_DEMO_MODE=true</code>
+      para simular emisión y probar el sync con SIGMA.
+    </div>
+    <div class="msg err" x-show="error" x-text="error"></div>
+    <div class="actions">
+      <button class="secondary" @click="step=2">← Volver</button>
+      <button @click="facturar()" :disabled="facturando"
+              x-text="facturando ? 'Facturando…' : 'Emitir factura'"></button>
+    </div>
+  </section>
+
+  <!-- STEP 4: Result -->
+  <section class="card" x-show="step===4">
+    <h2>Resultado</h2>
+    <div class="msg" :class="facturaOk ? 'ok' : 'err'"
+         x-text="facturaOk ? 'Factura emitida correctamente' : 'Factura con errores'">
+    </div>
+    <div class="grid" x-show="facturaResult">
+      <label>N° factura <input :value="facturaResult?.numero_factura || '—'" readonly /></label>
+      <label>CUFE <input :value="facturaResult?.cufe || '—'" readonly /></label>
+      <label>Id SNRI <input :value="facturaResult?.id_factura || '—'" readonly /></label>
+      <label>SIGMA <input :value="sigmaMsg" readonly /></label>
+    </div>
+    <div x-show="facturaResult?.errores?.length">
+      <h2 style="margin-top:1rem">Errores</h2>
+      <pre x-text="JSON.stringify(facturaResult.errores, null, 2)"></pre>
+    </div>
+    <div class="actions">
+      <button class="secondary" @click="reset()">Nueva carga</button>
+      <button @click="loadFacturas()">Ver facturas en BD</button>
+    </div>
+    <div x-show="facturas.length" class="facturas-list" style="margin-top:1rem">
+      <table>
+        <thead><tr><th>N°</th><th>NIT</th><th>Valor</th><th>Estado</th><th>SIGMA</th></tr></thead>
+        <tbody>
+          <template x-for="f in facturas" :key="f.id">
+            <tr>
+              <td x-text="f.numero_factura || '—'"></td>
+              <td x-text="(f.nit_pagador||'') + '-' + (f.dv_pagador||'')"></td>
+              <td x-text="f.valor_total"></td>
+              <td x-text="f.estado_snri"></td>
+              <td x-text="f.sigma_synced ? 'sí' : 'no'"></td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<script>
+function app() {
+  return {
+    step: 1,
+    dragging: false,
+    uploading: false,
+    uploadingStatus: false,
+    status: null,
+    task_id: null,
+    error: null,
+    healthOk: false,
+    nitValidado: null,
+    nitMensaje: null,
+    facturando: false,
+    facturaOk: false,
+    facturaResult: null,
+    sigmaMsg: '',
+    facturas: [],
+    datos: null,
+    pollTimer: null,
+    form: {
+      nit_pagador: '', dv_pagador: '', fecha_transaccion: '', valor_total: '',
+      numero_referencia: '', banco: '', forma_pago: 'CONSIGNACION',
+      nombre_razon_social: '', servicios: [],
+      id_proyecto: '1', id_seccional: '1', id_entidad: '1',
+      id_forma_pago: '1', id_banco: '1', id_servicio: '',
+      id_departamento: '11', id_ciudad: '11001',
+      direccion_principal: 'Calle 1 # 2-3', token: '', modo: 'auto',
+    },
+
+    async init() {
+      await this.checkHealth();
+      setInterval(() => this.checkHealth(), 15000);
+      this.loadFacturas();
+    },
+
+    async checkHealth() {
+      try {
+        const r = await fetch('/health');
+        const j = await r.json();
+        this.healthOk = j.status === 'ok';
+      } catch { this.healthOk = false; }
+    },
+
+    onDrop(e) {
+      this.dragging = false;
+      const f = e.dataTransfer.files?.[0];
+      if (f) this.onFile(f);
+    },
+
+    async onFile(file) {
+      this.error = null;
+      const allowed = ['image/png', 'image/jpeg', 'application/pdf'];
+      if (!allowed.includes(file.type)) {
+        this.error = 'Tipo no permitido: ' + file.type;
+        return;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        this.error = 'Archivo mayor a 10 MB';
+        return;
+      }
+      this.uploading = true;
+      try {
+        const fd = new FormData();
+        fd.append('file', file);
+        const r = await fetch('/api/v1/upload', { method: 'POST', body: fd });
+        if (!r.ok) {
+          const e = await r.json().catch(() => ({}));
+          throw new Error(e.detail || r.statusText);
+        }
+        const j = await r.json();
+        this.task_id = j.task_id;
+        this.status = j.status;
+        this.step = 2;
+        this.startPoll();
+      } catch (err) {
+        this.error = err.message || String(err);
+      } finally {
+        this.uploading = false;
+      }
+    },
+
+    startPoll() {
+      clearInterval(this.pollTimer);
+      this.pollTimer = setInterval(async () => {
+        if (!this.task_id) return;
+        try {
+          const r = await fetch('/api/v1/status/' + this.task_id);
+          if (!r.ok) return;
+          const j = await r.json();
+          this.status = j.status;
+          if (j.datos) {
+            this.datos = j.datos;
+            this.applyDatos(j.datos);
+          }
+          if (j.status === 'completed' || j.status === 'failed') {
+            clearInterval(this.pollTimer);
+            if (j.status === 'completed') {
+              await this.loadComprobante();
+            } else {
+              this.error = (j.errores || []).join('; ') || 'Falló el procesamiento';
+            }
+          }
+        } catch { /* keep polling */ }
+      }, 2000);
+    },
+
+    async loadComprobante() {
+      try {
+        const r = await fetch('/api/v1/comprobantes/' + this.task_id);
+        if (!r.ok) return;
+        const j = await r.json();
+        this.nitValidado = j.nit_validado;
+        this.nitMensaje = j.nit_mensaje;
+      } catch { /* ignore */ }
+    },
+
+    applyDatos(d) {
+      this.form.nit_pagador = d.nit_pagador || '';
+      this.form.dv_pagador = d.dv_pagador || '';
+      this.form.fecha_transaccion = (d.fecha_transaccion || '').slice(0, 10);
+      this.form.valor_total = String(d.valor_total ?? '');
+      this.form.numero_referencia = d.numero_referencia || '';
+      this.form.banco = d.banco || '';
+      this.form.forma_pago = d.forma_pago || 'CONSIGNACION';
+      if (d.servicios?.length) {
+        this.form.servicios = d.servicios.map(s => ({
+          codigo: s.codigo || '',
+          nombre: s.nombre || s.descripcion || '',
+          valor: String(s.valor ?? ''),
+        }));
+        this.form.id_servicio = d.servicios[0].codigo || '';
+      }
+      if (!this.form.nombre_razon_social) {
+        this.form.nombre_razon_social = d.numero_documento === d.nit_pagador
+          ? 'TERCERO ' + d.nit_pagador
+          : '';
+      }
+    },
+
+    goFacturar() {
+      this.error = null;
+      this.step = 3;
+    },
+
+    async facturar() {
+      this.facturando = true;
+      this.error = null;
+      this.facturaResult = null;
+      this.sigmaMsg = '';
+      try {
+        const base = {
+          id_proyecto: this.form.id_proyecto,
+          id_seccional: this.form.id_seccional,
+          id_entidad: this.form.id_entidad,
+          nit_pagador: this.form.nit_pagador,
+          dv_pagador: this.form.dv_pagador,
+          nombre_razon_social: this.form.nombre_razon_social || 'Tercero',
+          id_departamento: Number(this.form.id_departamento),
+          id_ciudad: Number(this.form.id_ciudad),
+          direccion_principal: this.form.direccion_principal,
+          id_forma_pago: this.form.id_forma_pago,
+          id_banco: this.form.id_banco,
+          numero_consignacion: this.form.numero_referencia,
+          fecha_consignacion: this.form.fecha_transaccion,
+          observaciones: 'Facturación automatizada ICA',
+        };
+
+        const svcs = (this.form.servicios || []).filter(s => s.codigo || s.valor);
+        const useDetalle = this.form.modo === 'detalle'
+          || (this.form.modo === 'auto' && svcs.length > 1);
+
+        let url, body;
+        if (useDetalle) {
+          url = '/api/v1/facturar/detalle';
+          body = {
+            ...base,
+            detalles: svcs.map(s => ({
+              id_servicio: s.codigo || this.form.id_servicio || '1',
+              valor: String(s.valor),
+              cantidad: '1',
+              valor_total: String(s.valor),
+            })),
+          };
+        } else {
+          const s = svcs[0] || { codigo: this.form.id_servicio || '1', valor: this.form.valor_total };
+          url = '/api/v1/facturar/simple';
+          body = {
+            ...base,
+            id_servicio: s.codigo || this.form.id_servicio || '1',
+            valor: String(s.valor || this.form.valor_total),
+            cantidad: '1',
+            valor_total: String(s.valor || this.form.valor_total),
+          };
+        }
+
+        const r = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) {
+          const detail = typeof j.detail === 'string'
+            ? j.detail
+            : JSON.stringify(j.detail || j);
+          throw new Error(detail);
+        }
+        this.facturaResult = j;
+        this.facturaOk = !!j.success;
+        const sigmaErr = (j.errores || []).find(e => e.codigo === 'SIGMA_WARNING');
+        this.sigmaMsg = sigmaErr
+          ? 'error: ' + sigmaErr.mensaje
+          : (j.success ? 'ok (verificar en lista)' : '—');
+        this.step = 4;
+        await this.loadFacturas();
+        const row = this.facturas.find(f => f.numero_factura === j.numero_factura);
+        if (row) {
+          this.sigmaMsg = row.sigma_synced ? 'sincronizada' : 'no sincronizada';
+        }
+      } catch (err) {
+        this.error = err.message || String(err);
+      } finally {
+        this.facturando = false;
+      }
+    },
+
+    async loadFacturas() {
+      try {
+        const r = await fetch('/api/v1/facturas?limit=20');
+        if (!r.ok) return;
+        this.facturas = await r.json();
+      } catch { /* ignore */ }
+    },
+
+    reset() {
+      clearInterval(this.pollTimer);
+      this.step = 1;
+      this.task_id = null;
+      this.status = null;
+      this.datos = null;
+      this.error = null;
+      this.nitValidado = null;
+      this.nitMensaje = null;
+      this.facturaResult = null;
+      this.facturaOk = false;
+      this.facturas = [];
+      this.form.servicios = [];
+      this.form.nit_pagador = '';
+      this.form.dv_pagador = '';
+      this.form.numero_referencia = '';
+      this.form.valor_total = '';
+      this.loadFacturas();
+    },
+  };
+}
+</script>
+</body>
+</html>
