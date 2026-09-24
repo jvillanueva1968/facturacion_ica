@@ -120,9 +120,58 @@ def test_hallazgos_preliminares():
     assert "dv_pagador=4" in h
     assert "fecha_transaccion=2026-09-23" in h
     assert "numero_referencia=E2E-UI-777" in h
+    assert "valor_total=150000" in h
+
+
+def test_hallazgos_valor_prefiere_valor_total():
+    from app.services.llm_service import hallazgos_preliminares
+
+    texto = "SUBTOTAL: 140.000\nIVA: 10.000\nVALOR TOTAL: $1.500.000,00\n"
+    h = hallazgos_preliminares(texto)
+    assert "valor_total=1500000" in h
 
 
 def test_hallazgos_preliminares_vacio():
     from app.services.llm_service import hallazgos_preliminares
 
     assert hallazgos_preliminares("sin datos utiles") == "(ninguno)"
+
+
+def test_normalizar_valor():
+    from app.services.llm_service import normalizar_valor
+
+    assert normalizar_valor("$150.000,00") == "150000"
+    assert normalizar_valor("1.500.000,50") == "1500000.5"
+    assert normalizar_valor("1,500,000.50") == "1500000.5"
+    assert normalizar_valor("150000") == "150000"
+    assert normalizar_valor("150000.25") == "150000.25"
+    assert normalizar_valor(None) == ""
+    assert normalizar_valor("") == ""
+
+
+def test_parse_response_normaliza_montos():
+    from app.services.llm_service import LLMService
+    from decimal import Decimal
+
+    raw = (
+        '{"forma_pago": "CONSIGNACION", "servicios": [{"codigo": "1", "valor": "1.500.000"}],'
+        ' "nit_pagador": "800197268", "fecha_transaccion": "2026-09-23",'
+        ' "valor_total": "$1.500.000,00", "numero_referencia": "REF1"}'
+    )
+    datos = LLMService()._parse_response(raw)
+    assert datos.valor_total == Decimal("1500000")
+    assert datos.servicios[0]["valor"] == "1500000"
+
+
+def test_parse_response_total_desde_servicios():
+    from app.services.llm_service import LLMService
+    from decimal import Decimal
+
+    raw = (
+        '{"forma_pago": "CONSIGNACION",'
+        ' "servicios": [{"codigo": "1", "valor": "100000"}, {"codigo": "2", "valor": "50000"}],'
+        ' "nit_pagador": "800197268", "fecha_transaccion": "2026-09-23",'
+        ' "valor_total": "", "numero_referencia": "REF1"}'
+    )
+    datos = LLMService()._parse_response(raw)
+    assert datos.valor_total == Decimal("150000")

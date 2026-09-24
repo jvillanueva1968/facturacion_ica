@@ -914,6 +914,24 @@ function app() {
       } catch { /* ignore */ }
     },
 
+    normalizarValor(v) {
+      if (v == null || v === '') return '';
+      let s = String(v).replace(/[$\s\u00a0]/g, '').replace(/[^\d.,-]/g, '');
+      if (!s || s === '-' || s === ',') return '';
+      s = s.replace(/^-+/, '');
+      if (s.includes(',') && s.includes('.')) {
+        s = s.lastIndexOf(',') > s.lastIndexOf('.')
+          ? s.replace(/\./g, '').replace(',', '.')
+          : s.replace(/,/g, '');
+      } else if (s.includes(',')) {
+        s = /^\d+,\d{1,2}$/.test(s) ? s.replace(',', '.') : s.replace(/,/g, '');
+      } else if (s.includes('.') && /^\d{1,3}(?:\.\d{3})+$/.test(s)) {
+        s = s.replace(/\./g, '');
+      }
+      const n = Number(s);
+      return Number.isFinite(n) && n >= 0 ? String(n) : '';
+    },
+
     applyDatos(d) {
       if (d.nit_pagador) this.form.nit_pagador = d.nit_pagador;
       if (d.dv_pagador) this.form.dv_pagador = d.dv_pagador;
@@ -921,7 +939,7 @@ function app() {
         this.form.nit_pagador = this.nitSolo();
       }
       this.form.fecha_transaccion = (d.fecha_transaccion || '').slice(0, 10);
-      this.form.valor_total = String(d.valor_total ?? '');
+      this.form.valor_total = this.normalizarValor(d.valor_total);
       this.form.numero_referencia = d.numero_referencia || '';
       this.form.banco = d.banco || '';
       this.form.forma_pago = d.forma_pago || 'CONSIGNACION';
@@ -929,9 +947,13 @@ function app() {
         this.form.servicios = d.servicios.map(s => ({
           codigo: s.codigo || '',
           nombre: s.nombre || s.descripcion || '',
-          valor: String(s.valor ?? ''),
+          valor: this.normalizarValor(s.valor),
         }));
         this.form.id_servicio = d.servicios[0].codigo || '';
+      }
+      if (!this.form.valor_total && this.form.servicios?.length) {
+        const suma = this.form.servicios.reduce((a, s) => a + (Number(s.valor) || 0), 0);
+        if (suma > 0) this.form.valor_total = String(suma);
       }
       if (d.tipo_documento) this.form.tipo_documento = d.tipo_documento;
       // nombres solo desde SNRI; si no hay consulta, no autocompletar desde OCR

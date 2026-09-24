@@ -2,6 +2,7 @@ import json
 import logging
 import re
 import httpx
+from decimal import Decimal, InvalidOperation
 from typing import Optional
 from pydantic import ValidationError
 from app.models.schemas import DatosExtraidos, FormaPago
@@ -44,9 +45,12 @@ TEXTO OCR:
 
 _RE_NIT = re.compile(r"NIT\D{0,25}(\d{6,10})(?:\s*[-–]\s*(\d))?", re.I)
 _RE_FECHA = re.compile(r"(\d{2})[/\-.](\d{2})[/\-.](\d{4})")
-_RE_VALOR = re.compile(
-    r"(?:VALOR(?:\s+TOTAL)?|TOTAL(?:\s+A\s+PAGAR)?)\D{0,20}(\$?\s*\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?|\d+(?:[.,]\d{2})?)",
-    re.I,
+_VALOR_NUM = r"(\$?\s*\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?|\d+(?:[.,]\d{2})?)"
+_RE_VALORES = (
+    re.compile(rf"VALOR\s+TOTAL\D{{0,20}}{_VALOR_NUM}", re.I),
+    re.compile(rf"TOTAL\s+A\s+PAGAR\D{{0,20}}{_VALOR_NUM}", re.I),
+    re.compile(rf"(?<!SUB)(?<!IVA\s)\bTOTAL\b\D{{0,20}}{_VALOR_NUM}", re.I),
+    re.compile(rf"\$\s*({_VALOR_NUM.lstrip('(').rstrip(')')})"),
 )
 _RE_REF = re.compile(
     r"(?:REFERENCIA|CONSIGNACI[OÓ]N|TRANSFERENCIA|N[ÚU]MERO(?:\s+DE)?\s+(?:OPERACI[OÓ]N|TRANSACCI[OÓ]N))"
@@ -54,6 +58,47 @@ _RE_REF = re.compile(
     re.I,
 )
 _RE_FECHA_ISO = re.compile(r"\b(\d{4}-\d{2}-\d{2})\b")
+
+
+def normalizar_valor(raw) -> str:
+    """1.500.000,00 / $150.000 / 1,500,000.50 / 150000 → '150000' | '150000.50'."""
+    if raw is None:
+        return ""
+    s = str(raw).strip().replace("$", "").replace(" ", "").replace("\u00a0", "")
+    s = re.sub(r"[^\d.,-]", "", s)
+    if not s or s in {"-", ","}:
+        return ""
+    s = s.lstrip("-")
+    if "," in s and "." in s:
+        if s.rfind(",") > s.rfind("."):
+            s = s.replace(".", "").replace(",", ".")
+        else:
+            s = s.replace(",", "")
+    elif "," in s:
+        if re.fullmatch(r"\d+,\d{1,2}", s):
+            s = s.replace(",", ".")
+        else:
+            s = s.replace(",", "")
+    elif "." in s:
+        if re.fullmatch(r"\d{1,3}(?:\.\d{3})+", s):
+            s = s.replace(".", "")
+    try:
+        d = Decimal(s)
+    except InvalidOperation:
+        return ""
+    if d < 0:
+        d = -d
+    return format(d.normalize(), "f")
+
+
+def _extraer_valor(ocr_text: str) -> Optional[str]:
+    for rx in _RE_VALORES:
+        m = rx.search(ocr_text)
+        if m:
+            n = normalizar_valor(m.group(1))
+            if n:
+                return n
+    return None
 
 
 def hallazgos_preliminares(ocr_text: str) -> str:
@@ -68,13 +113,35 @@ def hallazgos_preliminares(ocr_text: str) -> str:
             hints.append(f"fecha_transaccion={m.group(1)}")
         else:
             hints.append(f"fecha_transaccion={m.group(3)}-{m.group(2)}-{m.group(1)}")
-    m = _RE_VALOR.search(ocr_text)
-    if m:
-        hints.append(f"valor_total={m.group(1)}")
+    v = _extraer_valor(ocr_text)
+    if v:
+        hints.append(f"valor_total={v}")
     m = _RE_REF.search(ocr_text)
     if m:
         hints.append(f"numero_referencia={m.group(1)}")
     return "\n".join(hints) if hints else "(ninguno)"
+
+
+def normalizar_datos_llm(data: dict) -> dict:
+    """Normaliza montos del JSON del LLM y rellena valor_total desde servicios si hace falta."""
+    if not isinstance(data, dict):
+        return data
+    v = normalizar_valor(data.get("valor_total"))
+    if v:
+        data["valor_total"] = v
+    total_svcs = Decimal("0")
+    hay_svcs = False
+    for s in data.get("servicios") or []:
+        if not isinstance(s, dict):
+            continue
+        sv = normalizar_valor(s.get("valor"))
+        if sv:
+            s["valor"] = sv
+            hay_svcs = True
+            total_svcs += Decimal(sv)
+    if hay_svcs and (not data.get("valor_total")):
+        data["valor_total"] = str(total_svcs)
+    return data
 
 
 class LLMService:
@@ -136,6 +203,7 @@ class LLMService:
     def _parse_response(self, json_str: str) -> DatosExtraidos:
         try:
             data = json.loads(json_str)
+            data = normalizar_datos_llm(data)
             return DatosExtraidos(**data)
         except (json.JSONDecodeError, ValidationError) as e:
             logger.error(f"Error parseando respuesta LLM: {e}\nRespuesta: {json_str[:500]}")
