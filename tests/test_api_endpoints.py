@@ -30,10 +30,13 @@ def test_ui_pide_nit_antes_de_upload():
     assert html.index("Identificación") < html.index("Cargar comprobante")
 
 
-def test_upload_acepta_nit_form():
+def test_upload_acepta_nit_form(tmp_path, monkeypatch):
     from unittest.mock import AsyncMock, MagicMock, patch
 
+    from app.config import get_settings
     from app.db.session import get_db
+
+    monkeypatch.setattr(get_settings(), "upload_dir", str(tmp_path))
 
     fake_repo = MagicMock()
     fake_repo.create = AsyncMock(return_value=MagicMock())
@@ -52,7 +55,7 @@ def test_upload_acepta_nit_form():
                 files={"file": ("ok.png", b"\x89PNG\r\n\x1a\n", "image/png")},
                 data={"nit_pagador": "8001972684", "dv_pagador": "4"},
             )
-            assert r.status_code == 200
+            assert r.status_code == 200, r.text
             body = r.json()
             assert body["task_id"]
             assert body["status"] == "processing"

@@ -29,6 +29,9 @@ jobs:
       SNRI_DEMO_MODE: "true"
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/facturacion
       REDIS_URL: redis://localhost:6379/0
+      UPLOAD_DIR: ${{ runner.temp }}/uploads
+      OLLAMA_BASE_URL: http://127.0.0.1:11434
+      LLM_PROVIDER: ollama
 
     steps:
       - uses: actions/checkout@v4
