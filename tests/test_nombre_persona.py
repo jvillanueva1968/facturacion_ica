@@ -166,7 +166,3 @@ def test_ui_expone_tipo_persona_y_nombres():
     assert "imgZoom" in html
     assert "createObjectURL" in html
     assert "clic para ampliar" in html
-    assert "ocrLineas" in html
-    assert "ocrCampos" in html
-    assert "ocr-campos" in html
-    assert "ocr-raw" in html

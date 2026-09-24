@@ -143,54 +143,6 @@
     @media (max-width: 720px) { .ocr-split { grid-template-columns: 1fr; } }
     .ocr-split details { margin: 0; }
     .ocr-split pre { max-height: 320px; }
-    .ocr-box summary { cursor: pointer; color: var(--muted); font-size: 0.85rem; }
-    .ocr-campos {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
-      gap: 0.4rem;
-      margin: 0.55rem 0;
-    }
-    .ocr-campo {
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 0.35rem 0.5rem;
-      font-size: 0.78rem;
-      min-width: 0;
-    }
-    .ocr-campo.clave { border-color: var(--accent); }
-    .ocr-campo b {
-      display: block;
-      color: var(--muted);
-      font-weight: 600;
-      font-size: 0.65rem;
-      text-transform: uppercase;
-      letter-spacing: 0.03em;
-      margin-bottom: 0.1rem;
-    }
-    .ocr-campo span { color: var(--text); word-break: break-word; }
-    .ocr-raw {
-      max-height: 280px;
-      overflow: auto;
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 0.5rem 0.6rem;
-      font-family: ui-monospace, Menlo, Consolas, monospace;
-      font-size: 0.74rem;
-      line-height: 1.5;
-    }
-    .ocr-linea { display: grid; grid-template-columns: 2.4rem 1fr; gap: 0.5rem; }
-    .ocr-linea .n {
-      color: var(--muted);
-      text-align: right;
-      user-select: none;
-      opacity: 0.7;
-    }
-    .ocr-linea .t { white-space: pre-wrap; word-break: break-word; color: var(--text); }
-    .ocr-linea.clave .t { color: var(--accent); font-weight: 600; }
-    .ocr-linea.pag .t { color: var(--warn); font-weight: 600; }
-    .ocr-vacio { color: var(--muted); font-size: 0.8rem; padding: 0.75rem 0; }
     .ocr-doc {
       background: var(--bg);
       border: 1px solid var(--border);
@@ -391,31 +343,9 @@
 
     <div class="ocr-split" x-show="textoOcr || docPreview">
       <div class="ocr-text">
-        <details class="ocr-box" x-show="textoOcr" x-bind:open="status==='completed' || status==='failed'">
-          <summary>
-            Texto OCR · confianza <span x-text="confianzaOcr!=null ? Math.round(confianzaOcr)+'%' : '—'"></span>
-            · <span x-text="ocrLineas().length"></span> líneas
-          </summary>
-
-          <div class="ocr-campos" x-show="ocrCampos().length">
-            <template x-for="(c, i) in ocrCampos()" :key="i">
-              <div class="ocr-campo" :class="{clave: c.clave}">
-                <b x-text="c.label"></b>
-                <span x-text="c.value"></span>
-              </div>
-            </template>
-          </div>
-
-          <div class="ocr-raw" x-show="ocrLineas().length">
-            <template x-for="(linea, i) in ocrLineas()" :key="i">
-              <div class="ocr-linea"
-                   :class="{clave: esLineaClave(linea), pag: linea.startsWith('--- PÁGINA')}">
-                <span class="n" x-text="i + 1"></span>
-                <span class="t" x-text="linea || '·'"></span>
-              </div>
-            </template>
-          </div>
-          <p class="ocr-vacio" x-show="!ocrLineas().length">Sin texto reconocido.</p>
+        <details x-show="textoOcr">
+          <summary class="muted" style="cursor:pointer">Texto OCR (confianza <span x-text="confianzaOcr!=null ? Math.round(confianzaOcr)+'%' : '—'"></span>)</summary>
+          <pre x-text="textoOcr"></pre>
         </details>
         <p class="muted" x-show="!textoOcr">Esperando OCR…</p>
       </div>
@@ -688,44 +618,6 @@ function app() {
       return [this.form.primer_nombre, this.form.segundo_nombre,
               this.form.primer_apellido, this.form.segundo_apellido]
         .map(s => (s || '').trim()).filter(Boolean).join(' ');
-    },
-
-    ocrLineas() {
-      if (!this.textoOcr) return [];
-      return String(this.textoOcr).replace(/\r/g, '').split('\n');
-    },
-
-    ocrCampos() {
-      const claves = [
-        'NIT', 'DV', 'FECHA', 'VALOR', 'TOTAL', 'REFERENCIA', 'BANCO',
-        'CONSIGNACI', 'TRANSFEREN', 'FORMA', 'PAGO', 'NOMBRE', 'RAZON', 'RAZÓN',
-        'SERVICIO', 'CODIGO', 'CÓDIGO', 'DOCUMENTO', 'CIUDAD',
-      ];
-      const seen = new Set();
-      const out = [];
-      for (const raw of this.ocrLineas()) {
-        const line = raw.replace(/---\s*P[ÁA]GINA\s*\d+\s*---/i, '').trim();
-        if (!line || line.length > 120) continue;
-        const m = line.match(/^([A-Za-zÁÉÍÓÚÑáéíóúñ0-9 /()._-]{2,40}?)\s*[:\t]\s*(.+)$/);
-        if (!m) continue;
-        const label = m[1].trim();
-        const value = m[2].trim();
-        if (!value || seen.has(label.toUpperCase())) continue;
-        seen.add(label.toUpperCase());
-        const up = (label + ' ' + value).toUpperCase();
-        out.push({ label, value, clave: claves.some(k => up.includes(k)) });
-        if (out.length >= 24) break;
-      }
-      return out;
-    },
-
-    esLineaClave(linea) {
-      if (!linea) return false;
-      const up = linea.toUpperCase();
-      return [
-        'NIT', 'VALOR TOTAL', 'TOTAL', 'REFERENCIA', 'FECHA',
-        'CONSIGNACI', 'TRANSFERENCIA', 'FORMA DE PAGO', 'BANCO',
-      ].some(k => up.includes(k));
     },
 
     aplicarTerceroSnri(datos) {
