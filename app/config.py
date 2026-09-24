@@ -14,8 +14,9 @@ class Settings(BaseSettings):
     allowed_mimes: List[str] = ["image/png", "image/jpeg", "application/pdf"]
 
     tesseract_cmd: str = "tesseract"
-    tesseract_lang: str = "spa"
+    tesseract_lang: str = "spa+eng"
     ocr_dpi: int = 300
+    ocr_min_conf: int = 60
 
     llm_provider: str = "ollama"
     ollama_base_url: str = "http://ollama:11434"

@@ -24,6 +24,7 @@ dependencies = [
     "opencv-python-headless>=4.8",
     "pillow>=10.1",
     "pdf2image>=1.16",
+    "pypdf>=4.0",
     "zeep>=4.2",
     "requests-pkcs12>=1.10",
     "oracledb>=2.4",

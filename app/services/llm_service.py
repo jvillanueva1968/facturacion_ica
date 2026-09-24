@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 import httpx
 from typing import Optional
 from pydantic import ValidationError
@@ -32,10 +33,48 @@ REGLAS:
 3. Fechas: normaliza a YYYY-MM-DD
 4. Forma de pago: infiere por palabras clave (consignación, transferencia, PSE, datáfono, cheque gerencia)
 5. Servicios ICA: busca códigos como "ICA-XXXX", "SERV-XXXX" o nombres de trámites
+6. Si HALLAZGOS_PRELIMINARES trae un valor, úsalo como pista de alta prioridad (verifícalo contra el texto)
+
+HALLAZGOS_PRELIMINARES (regex sobre el OCR):
+{hints}
 
 TEXTO OCR:
 {ocr_text}
 """
+
+_RE_NIT = re.compile(r"NIT\D{0,25}(\d{6,10})(?:\s*[-–]\s*(\d))?", re.I)
+_RE_FECHA = re.compile(r"(\d{2})[/\-.](\d{2})[/\-.](\d{4})")
+_RE_VALOR = re.compile(
+    r"(?:VALOR(?:\s+TOTAL)?|TOTAL(?:\s+A\s+PAGAR)?)\D{0,20}(\$?\s*\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?|\d+(?:[.,]\d{2})?)",
+    re.I,
+)
+_RE_REF = re.compile(
+    r"(?:REFERENCIA|CONSIGNACI[OÓ]N|TRANSFERENCIA|N[ÚU]MERO(?:\s+DE)?\s+(?:OPERACI[OÓ]N|TRANSACCI[OÓ]N))"
+    r"\s*[:\-]?\s*([A-Z0-9][A-Z0-9\-]{3,19})",
+    re.I,
+)
+_RE_FECHA_ISO = re.compile(r"\b(\d{4}-\d{2}-\d{2})\b")
+
+
+def hallazgos_preliminares(ocr_text: str) -> str:
+    """Pistas deterministas baratas antes de llamar al LLM."""
+    hints = []
+    m = _RE_NIT.search(ocr_text)
+    if m:
+        hints.append(f"nit_pagador={m.group(1)}" + (f", dv_pagador={m.group(2)}" if m.group(2) else ""))
+    m = _RE_FECHA_ISO.search(ocr_text) or _RE_FECHA.search(ocr_text)
+    if m:
+        if m.re is _RE_FECHA_ISO:
+            hints.append(f"fecha_transaccion={m.group(1)}")
+        else:
+            hints.append(f"fecha_transaccion={m.group(3)}-{m.group(2)}-{m.group(1)}")
+    m = _RE_VALOR.search(ocr_text)
+    if m:
+        hints.append(f"valor_total={m.group(1)}")
+    m = _RE_REF.search(ocr_text)
+    if m:
+        hints.append(f"numero_referencia={m.group(1)}")
+    return "\n".join(hints) if hints else "(ninguno)"
 
 
 class LLMService:
@@ -43,7 +82,10 @@ class LLMService:
         self.provider = settings.llm_provider
 
     async def extraer_datos(self, ocr_text: str) -> DatosExtraidos:
-        prompt = PROMPT_EXTRACCION.format(ocr_text=ocr_text[:8000])
+        prompt = PROMPT_EXTRACCION.format(
+            hints=hallazgos_preliminares(ocr_text),
+            ocr_text=ocr_text[:8000],
+        )
 
         if self.provider == "ollama":
             return await self._call_ollama(prompt)

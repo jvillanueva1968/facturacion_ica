@@ -37,7 +37,8 @@ logger = structlog.get_logger()
 ocr_service = OCRService(
     tesseract_cmd=settings.tesseract_cmd,
     lang=settings.tesseract_lang,
-    dpi=settings.ocr_dpi
+    dpi=settings.ocr_dpi,
+    min_conf=settings.ocr_min_conf,
 )
 llm_service = LLMService()
 snri_client = SNRIClient()
