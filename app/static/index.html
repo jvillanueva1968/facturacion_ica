@@ -570,12 +570,9 @@ function app() {
         this.nitMensaje = j.mensaje || '';
         if (j.nit) this.form.nit_pagador = j.nit;
         if (j.dv_calculado && !this.form.dv_pagador) this.form.dv_pagador = j.dv_calculado;
-        if (this.nitValidado) {
-          await this.consultarTerceroSnri();
-        } else {
-          this.terceroSnri = null;
-        }
-        return this.nitValidado;
+        // consulta SNRI siempre, no depende del DV
+        await this.consultarTerceroSnri();
+        return this.nitValidado || !!this.terceroSnri;
       } catch (err) {
         this.nitValidado = false;
         this.nitMensaje = err.message || String(err);

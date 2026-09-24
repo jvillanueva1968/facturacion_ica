@@ -89,10 +89,23 @@ def test_validar_nit_snri_no_existe():
     res = asyncio.get_event_loop().run_until_complete(
         validar_nit_snri("99999999", "1", _FakeSNRI())
     )
-    # 99999999-1: verificar DV local primero
-    if validar_nit_completo("999999991"):
-        assert res["valido"] is True
-        assert "no existe" in res["mensaje"].lower() or "SNRI" in res["mensaje"]
-    else:
-        assert res["valido"] is False
+    # consulta SNRI sin validar DV; si no existe, valido según DV local
+    assert _FakeSNRI.last_query is None or _FakeSNRI.last_query == "99999999"
+    assert res["datos"] is None
+    assert "SNRI" in res["mensaje"] or "no existe" in res["mensaje"].lower()
+    limpiar_cache_nit()
+
+
+def test_validar_nit_snri_consulta_aunque_dv_mal():
+    limpiar_cache_nit()
+    _FakeSNRI.last_query = None
+    import asyncio
+
+    # DV 9 no es el correcto (correcto es 2); aun asi debe consultar SNRI
+    res = asyncio.get_event_loop().run_until_complete(
+        validar_nit_snri("93361223", "9", _FakeSNRI())
+    )
+    assert _FakeSNRI.last_query == "93361223"
+    assert res["datos"] is not None
+    assert "IGNACIO" in res["mensaje"]
     limpiar_cache_nit()

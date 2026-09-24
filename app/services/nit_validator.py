@@ -49,39 +49,38 @@ async def validar_nit_snri(nit: str, dv: str, snri_client=None) -> dict:
     if cache_key in _nit_cache:
         return _nit_cache[cache_key]
 
-    try:
-        if not validar_nit_completo(f"{nit}{dv}"):
-            resultado = {"valido": False, "mensaje": "DV inválido según algoritmo DIAN", "datos": None}
-            _nit_cache[cache_key] = resultado
-            return resultado
+    dv_ok = bool(dv) and validar_nit_completo(f"{nit}{dv}")
+    aviso_dv = "" if dv_ok or not dv else " · DV no coincide (consulta SNRI igual)"
 
+    try:
+        # La consulta a SNRI no depende del DV
         if snri_client and snri_client.token:
             tercero = await snri_client.consultar_tercero(nit)
             if tercero.success and tercero.nombre_razon_social:
                 resultado = {
                     "valido": True,
-                    "mensaje": f"NIT válido y existe en SNRI: {tercero.nombre_razon_social}",
+                    "mensaje": f"SNRI: {tercero.nombre_razon_social}{aviso_dv}",
                     "datos": tercero.model_dump()
                 }
             elif tercero.success:
                 resultado = {
                     "valido": True,
-                    "mensaje": "NIT válido y existe en SNRI",
+                    "mensaje": f"Existe en SNRI{aviso_dv}",
                     "datos": tercero.model_dump()
                 }
             else:
                 detalle = "; ".join(e.get("mensaje", "") for e in tercero.errores) or "sin detalle"
                 resultado = {
-                    "valido": True,
-                    "mensaje": f"NIT válido (algoritmo) pero no existe en SNRI ({detalle})",
+                    "valido": dv_ok,
+                    "mensaje": f"No existe en SNRI ({detalle}){aviso_dv}",
                     "datos": None
                 }
             _nit_cache[cache_key] = resultado
         else:
             # sin token SNRI: no cachear (habrá token en el siguiente intento)
             resultado = {
-                "valido": True,
-                "mensaje": "NIT válido (validación local algoritmo DIAN)",
+                "valido": dv_ok,
+                "mensaje": ("NIT válido (algoritmo DIAN)" if dv_ok else "DV no coincide") + aviso_dv,
                 "datos": None
             }
 
