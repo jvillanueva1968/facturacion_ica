@@ -161,3 +161,7 @@ def test_ui_expone_tipo_persona_y_nombres():
     assert 'x-model="form.id_tipo_persona"' not in html
     assert 'readonly' in html
     assert "solo lectura" in html.lower() or "solo lectura" in html
+    assert "review-layout" in html
+    assert "Documento cargado" in html
+    assert "docPreview" in html
+    assert "createObjectURL" in html

@@ -132,6 +132,30 @@
       padding: 0.75rem; overflow: auto; font-size: 0.75rem; max-height: 240px;
     }
     .facturas-list { max-height: 280px; overflow: auto; }
+    .review-layout { display: grid; grid-template-columns: 1fr 340px; gap: 1.25rem; align-items: start; }
+    @media (max-width: 860px) { .review-layout { grid-template-columns: 1fr; } }
+    .review-side {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.75rem;
+      position: sticky;
+      top: 1rem;
+    }
+    .review-side h3 { margin: 0 0 0.5rem; font-size: 0.85rem; color: var(--muted); font-weight: 600; }
+    .review-side img, .review-side iframe {
+      width: 100%;
+      max-height: 70vh;
+      border: 0;
+      border-radius: 6px;
+      background: #fff;
+      object-fit: contain;
+    }
+    .review-side .side-empty { color: var(--muted); font-size: 0.8rem; text-align: center; padding: 2rem 0.5rem; }
+    .review-side .side-name {
+      font-size: 0.75rem; color: var(--muted); margin-top: 0.5rem;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
   </style>
 </head>
 <body x-data="app()" x-init="init()">
@@ -258,6 +282,8 @@
             x-text="'OCR ' + Math.round(confianzaOcr) + '%'"></span>
     </h2>
 
+    <div class="review-layout">
+      <div class="review-main">
     <div class="progress" x-show="status==='processing'">
       <div :style="'width:' + (progress || 5) + '%; animation:none; margin:0; transition:width .3s'"></div>
     </div>
@@ -385,6 +411,22 @@
         </div>
       </div>
     </template>
+      </div>
+
+      <aside class="review-side">
+        <h3>Documento cargado</h3>
+        <template x-if="docPreview && docPreviewIsPdf">
+          <iframe :src="docPreview" title="Documento cargado"></iframe>
+        </template>
+        <template x-if="docPreview && !docPreviewIsPdf">
+          <img :src="docPreview" alt="Documento cargado" />
+        </template>
+        <template x-if="!docPreview">
+          <div class="side-empty">Sin vista previa local.<br />Vuelva a cargar el archivo para verlo aquí.</div>
+        </template>
+        <p class="side-name" x-show="docPreviewName" x-text="docPreviewName"></p>
+      </aside>
+    </div>
   </section>
 
   <!-- STEP 4: Facturar -->
@@ -491,6 +533,9 @@ function app() {
     textoOcr: '',
     paginas: null,
     terceroSnri: null,
+    docPreview: null,
+    docPreviewName: '',
+    docPreviewIsPdf: false,
     jwt: localStorage.getItem('ica_jwt') || '',
     form: {
       nit_pagador: '', dv_pagador: '', fecha_transaccion: '', valor_total: '',
@@ -651,6 +696,10 @@ function app() {
         this.error = 'Archivo mayor a 10 MB';
         return;
       }
+      if (this.docPreview) URL.revokeObjectURL(this.docPreview);
+      this.docPreview = URL.createObjectURL(file);
+      this.docPreviewName = file.name || '';
+      this.docPreviewIsPdf = file.type === 'application/pdf';
       this.uploading = true;
       try {
         const fd = new FormData();
@@ -980,6 +1029,10 @@ function app() {
       this.textoOcr = '';
       this.paginas = null;
       this.terceroSnri = null;
+      if (this.docPreview) URL.revokeObjectURL(this.docPreview);
+      this.docPreview = null;
+      this.docPreviewName = '';
+      this.docPreviewIsPdf = false;
       this.nitValidado = null;
       this.nitMensaje = null;
       this.facturaResult = null;
