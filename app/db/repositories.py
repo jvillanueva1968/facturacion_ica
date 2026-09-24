@@ -183,6 +183,23 @@ class FacturaRepo:
         )
         return result.scalar_one_or_none()
 
+    async def get_emitida_by_consignacion(
+        self, numero_consignacion: str
+    ) -> Optional[Factura]:
+        if not numero_consignacion:
+            return None
+        result = await self.session.execute(
+            select(Factura)
+            .options(selectinload(Factura.detalles))
+            .where(
+                Factura.numero_consignacion == numero_consignacion,
+                Factura.estado_snri == "emitida",
+            )
+            .order_by(Factura.created_at.desc())
+            .limit(1)
+        )
+        return result.scalars().first()
+
     async def update_snri_result(
         self,
         factura_id: str,

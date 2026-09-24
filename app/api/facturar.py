@@ -111,6 +111,24 @@ async def obtener_factura(
     return row
 
 
+def _respuesta_emitida(factura) -> SNRIFacturaResponse:
+    return SNRIFacturaResponse(
+        success=True,
+        numero_factura=factura.numero_factura,
+        id_factura=factura.id_factura_snri,
+        cufe=factura.cufe,
+        errores=[
+            {
+                "codigo": "DUPLICADO",
+                "mensaje": (
+                    "Factura ya emitida para esta numero_consignacion; "
+                    "se devuelve la existente (idempotente)."
+                ),
+            }
+        ],
+    )
+
+
 @router.post("/facturar/simple", response_model=SNRIFacturaResponse)
 @limiter.limit("20/minute")
 async def crear_factura_simple(
@@ -128,6 +146,17 @@ async def crear_factura_simple(
 
     factura_repo = FacturaRepo(db)
     audit_repo = AuditRepo(db)
+
+    existente = await factura_repo.get_emitida_by_consignacion(
+        input_data.numero_consignacion
+    )
+    if existente:
+        logger.info(
+            "factura_duplicada_consignacion",
+            numero_consignacion=input_data.numero_consignacion,
+            numero_factura=existente.numero_factura,
+        )
+        return _respuesta_emitida(existente)
 
     local_factura = await factura_repo.create(
         comprobante_id=None,
@@ -270,6 +299,17 @@ async def crear_factura_detalle(
 
     factura_repo = FacturaRepo(db)
     audit_repo = AuditRepo(db)
+
+    existente = await factura_repo.get_emitida_by_consignacion(
+        input_data.numero_consignacion
+    )
+    if existente:
+        logger.info(
+            "factura_duplicada_consignacion",
+            numero_consignacion=input_data.numero_consignacion,
+            numero_factura=existente.numero_factura,
+        )
+        return _respuesta_emitida(existente)
 
     local_factura = await factura_repo.create(
         comprobante_id=None,

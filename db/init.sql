@@ -59,6 +59,11 @@ CREATE INDEX IF NOT EXISTS ix_facturas_numero_factura ON facturas (numero_factur
 CREATE INDEX IF NOT EXISTS ix_facturas_nit_pagador ON facturas (nit_pagador);
 CREATE INDEX IF NOT EXISTS ix_facturas_numero_consignacion ON facturas (numero_consignacion);
 
+-- Una sola factura emitida por referencia de pago (métrica: 0 duplicadas)
+CREATE UNIQUE INDEX IF NOT EXISTS ux_facturas_emitidas_consignacion
+    ON facturas (numero_consignacion)
+    WHERE estado_snri = 'emitida' AND numero_consignacion IS NOT NULL;
+
 CREATE TABLE IF NOT EXISTS factura_detalles (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     factura_id UUID NOT NULL REFERENCES facturas(id) ON DELETE CASCADE,

@@ -265,7 +265,9 @@ En `ENVIRONMENT=development` + sin `APP_SECRET_KEY`, el Bearer es opcional
 Bearer es obligatorio. El header se envía desde la UI si guardas el JWT en
 `localStorage` clave `ica_jwt`.
 
-Rate limiting (slowapi): 60/min global; upload 10/min; facturar 20/min; emisión JWT 10/min.
+Rate limiting (slowapi): 60/min global; upload 10/min; facturar 20/min; emisión JWT y `POST /auth/token` (SNRI) 10/min.
+
+**Idempotencia**: si `numero_consignacion` ya tiene factura `emitida`, `POST /facturar/*` devuelve la existente con `errores[].codigo=DUPLICADO` (no crea fila nueva).
 
 ### Progreso en tiempo real (WebSocket)
 

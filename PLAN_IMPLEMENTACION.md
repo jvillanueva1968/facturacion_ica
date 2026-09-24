@@ -210,7 +210,7 @@ docker exec facturacion-ollama ollama pull llama3.2:3b
 
 ### Semana 3: Integración SIGMA + Frontend
 - [x] Mock PHP `/api/facturas/registrar` (idempotencia + token) — pendiente endpoint real del equipo PHP
-- [x] Idempotencia por `numero_referencia` / `numero_consignacion`
+- [x] Idempotencia por `numero_referencia` / `numero_consignacion` (mock SIGMA + app: devuelve factura emitida existente, índice único parcial)
 - [x] Frontend Alpine.js: upload, preview OCR, validación, facturación (4 pasos)
 - [x] WebSocket para progreso tiempo real (`/api/v1/ws/status/{task_id}`, fallback polling)
 

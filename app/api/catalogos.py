@@ -1,7 +1,8 @@
-from fastapi import APIRouter, HTTPException, Depends, Query
+from typing import Optional
+from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel
-from typing import Optional, List, Dict
 from app.core.deps import require_operator, require_viewer
+from app.core.rate_limit import limiter
 from app.services.snri_client import SNRIClient
 import structlog
 
@@ -19,14 +20,19 @@ class AuthRequest(BaseModel):
 
 
 @router.post("/auth/token")
-async def obtener_token(request: AuthRequest, user: dict = Depends(require_operator)):
+@limiter.limit("10/minute")
+async def obtener_token(
+    request: Request,
+    body: AuthRequest,
+    user: dict = Depends(require_operator),
+):
     from app.models.schemas import InicioTransaccionRequest
     auth_request = InicioTransaccionRequest(
-        id_proyecto=request.id_proyecto,
-        username=request.username,
-        pass_=request.password,
-        ip=request.ip,
-        proceso=request.proceso
+        id_proyecto=body.id_proyecto,
+        username=body.username,
+        pass_=body.password,
+        ip=body.ip,
+        proceso=body.proceso
     )
     response = await snri_client.obtener_token(auth_request)
     if not response.success:

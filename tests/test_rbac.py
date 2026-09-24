@@ -135,6 +135,7 @@ def test_produccion_operator_pasa_gate(monkeypatch):
     fake_factura = MagicMock()
     fake_factura.id = "11111111-2222-3333-4444-555555555555"
     fake_repo = MagicMock()
+    fake_repo.get_emitida_by_consignacion = AsyncMock(return_value=None)
     fake_repo.create = AsyncMock(return_value=fake_factura)
     fake_repo.update_snri_result = AsyncMock(return_value=fake_factura)
     fake_audit = MagicMock()
@@ -184,3 +185,50 @@ def test_mint_admin_requires_admin(monkeypatch):
     )
     assert r.status_code == 200
     assert r.json()["roles"] == ["admin"]
+
+
+def test_facturar_simple_idempotente_consignacion(monkeypatch):
+    from app.api import facturar as facturar_mod
+    from app.core import deps
+    from app.db.session import get_db
+
+    monkeypatch.setattr(deps, "auth_enabled", lambda: True)
+
+    existente = MagicMock(
+        numero_factura="DEMO-IDEM1",
+        id_factura_snri="DEMO-IDEM1",
+        cufe="DEMO-CUFE-IDEM1",
+        estado_snri="emitida",
+        numero_consignacion="IDEM-CONSIGN-1",
+    )
+    fake_repo = MagicMock()
+    fake_repo.get_emitida_by_consignacion = AsyncMock(return_value=existente)
+    fake_repo.create = AsyncMock(
+        side_effect=AssertionError("no debe crear factura duplicada")
+    )
+    fake_audit = MagicMock()
+    fake_audit.log = AsyncMock(return_value=None)
+
+    monkeypatch.setattr(facturar_mod, "FacturaRepo", lambda session: fake_repo)
+    monkeypatch.setattr(facturar_mod, "AuditRepo", lambda session: fake_audit)
+
+    async def _fake_db():
+        yield MagicMock()
+
+    app.dependency_overrides[get_db] = _fake_db
+    try:
+        tok = create_access_token("ops", roles=["operator"])
+        body = dict(SIMPLE_BODY, numero_consignacion="IDEM-CONSIGN-1")
+        r = client.post(
+            "/api/v1/facturar/simple",
+            json=body,
+            headers={"Authorization": f"Bearer {tok}"},
+        )
+        assert r.status_code == 200
+        j = r.json()
+        assert j["success"] is True
+        assert j["numero_factura"] == "DEMO-IDEM1"
+        assert any(e.get("codigo") == "DUPLICADO" for e in j["errores"])
+        fake_repo.create.assert_not_awaited()
+    finally:
+        app.dependency_overrides.pop(get_db, None)
