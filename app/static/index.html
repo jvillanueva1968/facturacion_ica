@@ -176,7 +176,7 @@
       <strong>Tercero SNRI (solo lectura)</strong>
       <div class="grid" style="margin-top:0.5rem">
         <label>Tipo persona
-          <input :value="String(form.id_tipo_persona)==='2' ? '2 — Jurídica (razón social)' : '1 — Natural (nombres/apellidos)'"
+          <input :value="String(form.id_tipo_persona)==='2' ? '2 — Personas Jurídicas' : '1 — Personas Naturales'"
                  readonly />
         </label>
         <template x-if="String(form.id_tipo_persona) === '2'">

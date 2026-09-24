@@ -81,6 +81,68 @@ def test_parse_tercero_persona_natural_parte_nombre():
     ) == "IGNACIO BOHORQUEZ PAEZ"
 
 
+def test_parse_tercero_nit_doc2_es_juridica():
+    from app.services.snri_client import SNRIClient
+
+    class Item:
+        Id = 593981
+        NitCc = "800197268"
+        Nombre = "UAE DIRECCION DE IMPUESTOS Y ADUANAS NACIONALES"
+        Id_tipo_doc = "2"
+        Tipo_Documento = "NIT"
+        TIPO_PERSONA = None
+        GRAN_CONTRIBUYENTE = "NO"
+        AUTORRETENEDOR = "NO"
+        REGIMEN_COMUN = "SI"
+        REGIMEN_SIMPLIFICADO = "NO"
+        ID_DEPARTAMENTO = "38"
+        ID_CIUDAD = "1181"
+        DireccionPrincipal = ""
+        TELEFONO = "6079999"
+        EMAIL = "N/A"
+
+    class Resp:
+        Success = True
+        Result = type("R", (), {"ConsultasE": [Item()]})()
+
+    c = SNRIClient.__new__(SNRIClient)
+    out = c._parse_tercero_response(Resp(), "800197268")
+    assert out.success
+    assert out.id_tipo_persona == 2
+    assert out.primer_nombre is None
+
+
+def test_parse_tercero_cedula_doc1_sin_texto_es_natural():
+    from app.services.snri_client import SNRIClient
+
+    class Item:
+        Id = 1
+        NitCc = "12345678"
+        Nombre = "MARIA GARCIA"
+        Id_tipo_doc = "1"
+        Tipo_Documento = "CEDULA"
+        TIPO_PERSONA = None
+        GRAN_CONTRIBUYENTE = "NO"
+        AUTORRETENEDOR = "NO"
+        REGIMEN_COMUN = "NO"
+        REGIMEN_SIMPLIFICADO = "SI"
+        ID_DEPARTAMENTO = "11"
+        ID_CIUDAD = "11001"
+        DireccionPrincipal = ""
+        TELEFONO = ""
+        EMAIL = ""
+
+    class Resp:
+        Success = True
+        Result = type("R", (), {"ConsultasE": [Item()]})()
+
+    c = SNRIClient.__new__(SNRIClient)
+    out = c._parse_tercero_response(Resp(), "12345678")
+    assert out.success
+    assert out.id_tipo_persona == 1
+    assert out.primer_apellido == "GARCIA"
+
+
 def test_ui_expone_tipo_persona_y_nombres():
     from fastapi.testclient import TestClient
     from app.main import app

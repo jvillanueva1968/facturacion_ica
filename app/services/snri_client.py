@@ -429,12 +429,12 @@ class SNRIClient:
             elif "NATURAL" in tipo_persona_txt or "PERSONA NATURAL" in tipo_persona_txt:
                 id_tipo_persona = 1
             else:
-                # Id_tipo_doc=1 suele ser NIT (jurídica en SNRI ICA); cédula → natural
+                # SNRI: Id_tipo_doc=1 → CEDULA (natural); Id_tipo_doc=2 → NIT (jurídica)
                 id_doc = self._int_or_none(self._field(item, "Id_tipo_doc") or self._field(item, "IdTipoDocumento"))
                 tipo_doc_txt = str(self._field(item, "Tipo_Documento") or "").upper()
-                if "NIT" in tipo_doc_txt or (id_doc is not None and id_doc == 1 and "CEDULA" not in tipo_doc_txt):
+                if "NIT" in tipo_doc_txt or id_doc == 2:
                     id_tipo_persona = 2
-                elif "CEDULA" in tipo_doc_txt or id_doc == 2:
+                elif "CEDULA" in tipo_doc_txt or id_doc == 1:
                     id_tipo_persona = 1
                 else:
                     id_tipo_persona = 1
