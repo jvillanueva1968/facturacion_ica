@@ -200,6 +200,10 @@ docker run --rm \
   -v "$(pwd)/../wsdl:/wsdl" \
   -v "$(pwd)/../tests:/tests" \
   python:3.11-slim bash -c "pip install zeep pytest -q && python -m pytest /tests/test_wsdl.py -v"
+
+# Load/stress (NO llama /facturar ni crea facturas)
+python scripts/load_test.py --base http://localhost:8000 --concurrency 20 --duration 15
+# Métricas: RPS, latencia p50/p95/p99, códigos HTTP, 429 de rate-limit
 ```
 
 ---

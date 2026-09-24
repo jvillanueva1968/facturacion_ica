@@ -1,8 +1,9 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks, Depends
-from uuid import uuid4
+from uuid import UUID, uuid4
 from pathlib import Path
 import aiofiles
 import structlog
+from sqlalchemy.exc import DBAPIError, DataError, StatementError
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import Request
 
@@ -146,8 +147,17 @@ async def procesar_documento(task_id: str, file_path: Path):
 
 @router.get("/status/{task_id}", response_model=UploadResponse)
 async def get_task_status(task_id: str, db: AsyncSession = Depends(get_db)):
+    try:
+        UUID(task_id)
+    except ValueError:
+        raise HTTPException(404, "Task no encontrada")
+
     repo = ComprobanteRepo(db)
-    row = await repo.get_by_task_id(task_id)
+    try:
+        row = await repo.get_by_task_id(task_id)
+    except (DataError, DBAPIError, StatementError) as e:
+        logger.warning("status_task_id_invalido", task_id=task_id, error=str(e))
+        raise HTTPException(404, "Task no encontrada")
     if not row:
         raise HTTPException(404, "Task no encontrada")
 
@@ -168,8 +178,17 @@ async def get_task_status(task_id: str, db: AsyncSession = Depends(get_db)):
 
 @router.get("/comprobantes/{task_id}", response_model=ComprobanteOut)
 async def get_comprobante(task_id: str, db: AsyncSession = Depends(get_db)):
+    try:
+        UUID(task_id)
+    except ValueError:
+        raise HTTPException(404, "Comprobante no encontrado")
+
     repo = ComprobanteRepo(db)
-    row = await repo.get_by_task_id(task_id)
+    try:
+        row = await repo.get_by_task_id(task_id)
+    except (DataError, DBAPIError, StatementError) as e:
+        logger.warning("comprobante_task_id_invalido", task_id=task_id, error=str(e))
+        raise HTTPException(404, "Comprobante no encontrado")
     if not row:
         raise HTTPException(404, "Comprobante no encontrado")
     return row

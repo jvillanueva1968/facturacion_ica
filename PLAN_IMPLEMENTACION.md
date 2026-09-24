@@ -218,7 +218,7 @@ docker exec facturacion-ollama ollama pull llama3.2:3b
 - [x] JWT Auth + Bearer (dev opcional / prod obligatorio) + endpoint `/auth/jwt`
 - [x] Rate limiting (slowapi): upload/facturar/NIT/JWT
 - [x] Logs estructurados (structlog) + auditoría (tabla `audit_log`)
-- [ ] Tests carga + stress
+- [x] Tests carga + stress (`scripts/load_test.py`, sin `/facturar`)
 - [x] Documentación OpenAPI + README local; pytest unit + API tests en imagen
 - [x] RBAC (viewer/operator/admin + jerarquía + tests `test_rbac.py`)
 

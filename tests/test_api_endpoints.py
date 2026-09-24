@@ -62,3 +62,18 @@ def test_upload_rechaza_tipo():
     )
     # 400 tipo no permitido, o 401 si auth forzado — nunca 500
     assert r.status_code in (400, 401, 413, 429)
+
+
+def test_status_uuid_invalido_es_404():
+    r = client.get("/api/v1/status/loadtest-none")
+    assert r.status_code == 404
+
+
+def test_status_uuid_desconocido_es_404():
+    r = client.get("/api/v1/status/00000000-0000-4000-8000-000000000000")
+    assert r.status_code == 404
+
+
+def test_comprobante_uuid_invalido_es_404():
+    r = client.get("/api/v1/comprobantes/not-a-uuid")
+    assert r.status_code == 404
