@@ -77,3 +77,62 @@ def test_status_uuid_desconocido_es_404():
 def test_comprobante_uuid_invalido_es_404():
     r = client.get("/api/v1/comprobantes/not-a-uuid")
     assert r.status_code == 404
+
+
+def test_pdf_demo_genera_bytes_validos():
+    import base64
+
+    from app.services.pdf_service import demo_pdf_base64
+
+    b64 = demo_pdf_base64(
+        numero_factura="DEMO-TEST1",
+        cufe="C1",
+        nit="800197268-4",
+        razon_social="EMPRESA (X)",
+        valor_total="150000",
+    )
+    raw = base64.b64decode(b64)
+    assert raw.startswith(b"%PDF-1.4")
+    assert b"DEMO-TEST1" in raw
+    assert raw.rstrip().endswith(b"%%EOF")
+
+
+def test_imprimir_demo_ok_y_pdf_download():
+    from unittest.mock import AsyncMock, MagicMock, patch
+
+    from app.db.session import get_db
+
+    fake_row = MagicMock(
+        id="22222222-3333-4444-5555-666666666666",
+        numero_factura="DEMO-PDF-1",
+        cufe="CUFE-PDF",
+        nit_pagador="800197268",
+        dv_pagador="4",
+        nombre_razon_social="PDF TEST",
+        valor_total="1000",
+        pdf_base64=None,
+    )
+    fake_repo = MagicMock()
+    fake_repo.get_by_numero = AsyncMock(return_value=fake_row)
+    fake_repo.save_pdf = AsyncMock(return_value=fake_row)
+
+    async def _fake_db():
+        yield MagicMock()
+
+    with patch("app.api.facturar.FacturaRepo", lambda session: fake_repo):
+        app.dependency_overrides[get_db] = _fake_db
+        try:
+            r = client.post("/api/v1/facturar/imprimir/DEMO-PDF-1")
+            assert r.status_code == 200
+            body = r.json()
+            assert body["success"] is True
+            assert body["pdf_base64"]
+            fake_repo.save_pdf.assert_awaited()
+
+            fake_row.pdf_base64 = body["pdf_base64"]
+            r2 = client.get("/api/v1/facturar/DEMO-PDF-1/pdf")
+            assert r2.status_code == 200
+            assert r2.headers["content-type"].startswith("application/pdf")
+            assert r2.content.startswith(b"%PDF")
+        finally:
+            app.dependency_overrides.pop(get_db, None)

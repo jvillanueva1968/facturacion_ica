@@ -231,6 +231,15 @@ class FacturaRepo:
         await self.session.refresh(row)
         return row
 
+    async def save_pdf(self, factura_id: str, pdf_base64: str) -> Optional[Factura]:
+        row = await self.get(factura_id)
+        if not row:
+            return None
+        row.pdf_base64 = pdf_base64
+        await self.session.commit()
+        await self.session.refresh(row)
+        return row
+
     async def list_recent(self, limit: int = 50) -> list[Factura]:
         result = await self.session.execute(
             select(Factura)

@@ -311,7 +311,11 @@
       <h2 style="margin-top:1rem">Errores</h2>
       <pre x-text="JSON.stringify(facturaResult.errores, null, 2)"></pre>
     </div>
+    <div class="msg err" x-show="pdfError" x-text="pdfError"></div>
     <div class="actions">
+      <button class="success" x-show="facturaOk && facturaResult?.numero_factura"
+              @click="descargarPdf()" :disabled="pdfDescargando"
+              x-text="pdfDescargando ? 'Generando PDF…' : 'Descargar PDF'"></button>
       <button class="secondary" @click="reset()">Nueva carga</button>
       <button @click="loadFacturas()">Ver facturas en BD</button>
     </div>
@@ -352,6 +356,8 @@ function app() {
     facturaResult: null,
     sigmaMsg: '',
     facturas: [],
+    pdfDescargando: false,
+    pdfError: '',
     datos: null,
     pollTimer: null,
     ws: null,
@@ -649,6 +655,36 @@ function app() {
       } catch { /* ignore */ }
     },
 
+    async descargarPdf() {
+      const nro = this.facturaResult?.numero_factura;
+      if (!nro) return;
+      this.pdfDescargando = true;
+      this.pdfError = '';
+      try {
+        const r = await fetch(
+          '/api/v1/facturar/' + encodeURIComponent(nro) + '/pdf',
+          { headers: this.authHeaders() },
+        );
+        if (!r.ok) {
+          const j = await r.json().catch(() => ({}));
+          throw new Error(typeof j.detail === 'string' ? j.detail : JSON.stringify(j));
+        }
+        const blob = await r.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = nro + '.pdf';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        this.pdfError = err.message || String(err);
+      } finally {
+        this.pdfDescargando = false;
+      }
+    },
+
     reset() {
       clearInterval(this.pollTimer);
       this.closeWs();
@@ -664,6 +700,8 @@ function app() {
       this.facturaResult = null;
       this.facturaOk = false;
       this.facturas = [];
+      this.pdfDescargando = false;
+      this.pdfError = '';
       this.form.servicios = [];
       this.form.nit_pagador = '';
       this.form.dv_pagador = '';

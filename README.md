@@ -269,6 +269,18 @@ Rate limiting (slowapi): 60/min global; upload 10/min; facturar 20/min; emisión
 
 **Idempotencia**: si `numero_consignacion` ya tiene factura `emitida`, `POST /facturar/*` devuelve la existente con `errores[].codigo=DUPLICADO` (no crea fila nueva).
 
+### PDF de la factura
+
+```bash
+# POST genera/guarda PDF (demo: PDF local; real: P_ImprimirFactura)
+curl -X POST http://localhost:8000/api/v1/facturar/imprimir/DEMO-XXXX
+
+# GET descarga application/pdf (desde BD o al generar)
+curl -OJ http://localhost:8000/api/v1/facturar/DEMO-XXXX/pdf
+```
+
+En la UI, tras emitir, botón **Descargar PDF**.
+
 ### Progreso en tiempo real (WebSocket)
 
 ```

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Response
 from pydantic import BaseModel
 from typing import List, Optional
 from decimal import Decimal
@@ -10,6 +10,7 @@ from app.models.schemas import (
     SNRIFacturaDetalleRequest,
     SNRIFacturaResponse,
     FacturaDetalle,
+    FacturaImpresaResponse,
     FormaPago,
     FacturaOut,
 )
@@ -18,6 +19,7 @@ from app.core.rate_limit import limiter
 from app.services.snri_client import SNRIClient
 from app.services.sigma_client import SigmaClient
 from app.services.nit_validator import validar_nit_snri
+from app.services.pdf_service import demo_pdf_base64
 from app.config import get_settings
 from app.db.session import get_db
 from app.db.repositories import FacturaRepo, AuditRepo
@@ -421,8 +423,30 @@ async def crear_factura_detalle(
     return response
 
 
-@router.post("/facturar/imprimir/{numero_factura}")
-async def imprimir_factura(numero_factura: str):
+@router.post("/facturar/imprimir/{numero_factura}", response_model=FacturaImpresaResponse)
+@limiter.limit("20/minute")
+async def imprimir_factura(
+    numero_factura: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    user: dict = Depends(require_operator),
+):
+    repo = FacturaRepo(db)
+    row = await repo.get_by_numero(numero_factura)
+    if not row:
+        raise HTTPException(404, "Factura no encontrada")
+
+    if settings.snri_demo_mode and not snri_client.token:
+        pdf_b64 = demo_pdf_base64(
+            numero_factura=numero_factura,
+            cufe=row.cufe or "",
+            nit=f"{row.nit_pagador}-{row.dv_pagador or ''}",
+            razon_social=row.nombre_razon_social or "",
+            valor_total=str(row.valor_total or ""),
+        )
+        await repo.save_pdf(row.id, pdf_b64)
+        return FacturaImpresaResponse(success=True, pdf_base64=pdf_b64)
+
     if not snri_client.token:
         raise HTTPException(400, "Token SNRI no disponible")
 
@@ -430,4 +454,52 @@ async def imprimir_factura(numero_factura: str):
     if not response.success:
         raise HTTPException(400, f"Error imprimiendo: {response.errores}")
 
+    if response.pdf_base64:
+        await repo.save_pdf(row.id, response.pdf_base64)
     return response
+
+
+@router.get("/facturar/{numero_factura}/pdf")
+async def descargar_pdf_factura(
+    numero_factura: str,
+    db: AsyncSession = Depends(get_db),
+    user: dict = Depends(require_viewer),
+):
+    import base64 as b64mod
+
+    repo = FacturaRepo(db)
+    row = await repo.get_by_numero(numero_factura)
+    if not row:
+        raise HTTPException(404, "Factura no encontrada")
+
+    pdf_b64 = row.pdf_base64
+    if not pdf_b64:
+        if settings.snri_demo_mode and not snri_client.token:
+            pdf_b64 = demo_pdf_base64(
+                numero_factura=numero_factura,
+                cufe=row.cufe or "",
+                nit=f"{row.nit_pagador}-{row.dv_pagador or ''}",
+                razon_social=row.nombre_razon_social or "",
+                valor_total=str(row.valor_total or ""),
+            )
+            await repo.save_pdf(row.id, pdf_b64)
+        elif snri_client.token:
+            impresa = await snri_client.imprimir_factura(numero_factura)
+            if not impresa.success or not impresa.pdf_base64:
+                raise HTTPException(400, f"Sin PDF: {impresa.errores}")
+            pdf_b64 = impresa.pdf_base64
+            await repo.save_pdf(row.id, pdf_b64)
+        else:
+            raise HTTPException(400, "PDF no disponible (sin token SNRI ni modo demo)")
+
+    try:
+        raw = b64mod.b64decode(pdf_b64)
+    except Exception as e:
+        raise HTTPException(500, f"PDF corrupto en BD: {e}")
+
+    safe = (numero_factura or "factura").replace("/", "_")
+    return Response(
+        content=raw,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{safe}.pdf"'},
+    )
