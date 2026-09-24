@@ -177,11 +177,14 @@ curl -X POST http://localhost:8000/api/v1/facturar/simple \
 ## 7. Probar Upload OCR + LLM
 
 ```bash
-# Subir imagen/PDF
+# Subir imagen/PDF con NIT pre-digitado (el comprobante NO trae identificación)
 curl -X POST http://localhost:8000/api/v1/upload \
-  -F "file=@/ruta/a/comprobante.png" | jq .
+  -F "file=@/ruta/a/comprobante.png" \
+  -F "nit_pagador=800197268" \
+  -F "dv_pagador=4" | jq .
 
 # Respuesta: {"task_id": "uuid", "status": "processing"}
+# Si el OCR/LLM no encuentra NIT, se usa el pre-digitado.
 
 # Consultar estado (implementar en Redis/BD)
 curl http://localhost:8000/api/v1/status/TU_TASK_ID

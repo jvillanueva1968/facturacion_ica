@@ -142,15 +142,58 @@
 
 <main>
   <div class="steps">
-    <span class="step" :class="{active: step===1, done: step>1}">1. Cargar comprobante</span>
-    <span class="step" :class="{active: step===2, done: step>2}">2. Revisar datos</span>
-    <span class="step" :class="{active: step===3, done: step>3}">3. Facturar</span>
-    <span class="step" :class="{active: step===4}">4. Resultado</span>
+    <span class="step" :class="{active: step===1, done: step>1}">1. Identificación</span>
+    <span class="step" :class="{active: step===2, done: step>2}">2. Cargar comprobante</span>
+    <span class="step" :class="{active: step===3, done: step>3}">3. Revisar datos</span>
+    <span class="step" :class="{active: step===4, done: step>4}">4. Facturar</span>
+    <span class="step" :class="{active: step===5}">5. Resultado</span>
   </div>
 
-  <!-- STEP 1: Upload -->
+  <!-- STEP 1: Identificación (antes del upload — el comprobante no trae NIT) -->
   <section class="card" x-show="step===1">
+    <h2>Identificación del pagador</h2>
+    <p class="muted" style="margin-top:0">
+      El comprobante de pago <strong>no incluye NIT/identificación</strong>.
+      Indíquelo aquí <strong>antes</strong> de cargar el documento.
+    </p>
+    <div class="grid" style="margin-top:1rem">
+      <label>NIT / identificación (solo números)
+        <input x-model="form.nit_pagador" inputmode="numeric" autocomplete="off"
+               placeholder="800197268" @keydown.enter.prevent="identificar()" />
+      </label>
+      <label>DV
+        <input x-model="form.dv_pagador" maxlength="2" autocomplete="off"
+               placeholder="4" @keydown.enter.prevent="identificar()" />
+      </label>
+      <label class="span2">Nombre / Razón social (opcional)
+        <input x-model="form.nombre_razon_social" autocomplete="organization"
+               placeholder="Empresa o tercero a facturar" />
+      </label>
+    </div>
+    <div class="msg err" x-show="error" x-text="error"></div>
+    <div class="msg ok" x-show="nitValidado===true && nitMensaje"
+         x-text="'NIT OK: ' + (nitMensaje || '')"></div>
+    <div class="msg err" x-show="nitValidado===false && nitMensaje"
+         x-text="'NIT: ' + (nitMensaje || '')"></div>
+    <div class="actions">
+      <button class="secondary" @click="validarNitPre()" :disabled="validandoNit"
+              x-text="validandoNit ? 'Validando…' : 'Validar NIT'"></button>
+      <button class="success" @click="identificar()" :disabled="validandoNit">
+        Continuar a carga →
+      </button>
+    </div>
+    <p class="muted" style="margin-bottom:0">
+      El NIT se envía con el upload; si el OCR no lo encuentra, se usa el que usted digitó.
+    </p>
+  </section>
+
+  <!-- STEP 2: Upload -->
+  <section class="card" x-show="step===2">
     <h2>Cargar comprobante de pago</h2>
+    <p class="muted" style="margin-top:0">
+      Pagador: <strong x-text="(form.nit_pagador || '—') + (form.dv_pagador ? '-' + form.dv_pagador : '')"></strong>
+      <span x-show="form.nombre_razon_social"> · <span x-text="form.nombre_razon_social"></span></span>
+    </p>
     <div class="drop"
          :class="{over: dragging}"
          @dragover.prevent="dragging=true"
@@ -164,10 +207,13 @@
     </div>
     <div class="progress" x-show="uploading"><div></div></div>
     <div class="msg err" x-show="error" x-text="error"></div>
+    <div class="actions">
+      <button class="secondary" @click="step=1">← Otra identificación</button>
+    </div>
   </section>
 
-  <!-- STEP 2: Review -->
-  <section class="card" x-show="step===2">
+  <!-- STEP 3: Review -->
+  <section class="card" x-show="step===3">
     <h2>Revisar datos extraídos
       <span class="badge info" x-show="status==='processing'">Procesando…</span>
       <span class="badge ok" x-show="status==='completed'">Completado</span>
@@ -257,15 +303,15 @@
         </details>
 
         <div class="actions">
-          <button class="secondary" @click="reset()">← Otra carga</button>
+          <button class="secondary" @click="step=2">← Otra carga</button>
           <button class="success" @click="goFacturar()" :disabled="facturando">Continuar a facturación →</button>
         </div>
       </div>
     </template>
   </section>
 
-  <!-- STEP 3: Facturar -->
-  <section class="card" x-show="step===3">
+  <!-- STEP 4: Facturar -->
+  <section class="card" x-show="step===4">
     <h2>Confirmar y facturar</h2>
     <div class="grid">
       <label>NIT-DV <input :value="form.nit_pagador + '-' + form.dv_pagador" readonly /></label>
@@ -289,14 +335,14 @@
     </div>
     <div class="msg err" x-show="error" x-text="error"></div>
     <div class="actions">
-      <button class="secondary" @click="step=2">← Volver</button>
+      <button class="secondary" @click="step=3">← Volver</button>
       <button @click="facturar()" :disabled="facturando"
               x-text="facturando ? 'Facturando…' : 'Emitir factura'"></button>
     </div>
   </section>
 
-  <!-- STEP 4: Result -->
-  <section class="card" x-show="step===4">
+  <!-- STEP 5: Result -->
+  <section class="card" x-show="step===5">
     <h2>Resultado</h2>
     <div class="msg" :class="facturaOk ? 'ok' : 'err'"
          x-text="facturaOk ? 'Factura emitida correctamente' : 'Factura con errores'">
@@ -358,6 +404,7 @@ function app() {
     facturas: [],
     pdfDescargando: false,
     pdfError: '',
+    validandoNit: false,
     datos: null,
     pollTimer: null,
     ws: null,
@@ -377,6 +424,57 @@ function app() {
 
     authHeaders() {
       return this.jwt ? { 'Authorization': 'Bearer ' + this.jwt } : {};
+    },
+
+    nitSolo() {
+      return String(this.form.nit_pagador || '').replace(/\D/g, '');
+    },
+
+    async validarNitPre() {
+      this.error = null;
+      const nit = this.nitSolo();
+      if (nit.length < 6 || nit.length > 10) {
+        this.nitValidado = false;
+        this.nitMensaje = 'NIT debe tener entre 6 y 10 dígitos';
+        return false;
+      }
+      this.validandoNit = true;
+      try {
+        const r = await fetch('/api/v1/nit/validar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...this.authHeaders() },
+          body: JSON.stringify({ nit, dv: this.form.dv_pagador || null }),
+        });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(j.detail || r.statusText);
+        this.nitValidado = !!j.valido;
+        this.nitMensaje = j.mensaje || '';
+        if (j.nit) this.form.nit_pagador = j.nit;
+        if (j.dv_calculado && !this.form.dv_pagador) this.form.dv_pagador = j.dv_calculado;
+        return this.nitValidado;
+      } catch (err) {
+        this.nitValidado = false;
+        this.nitMensaje = err.message || String(err);
+        return false;
+      } finally {
+        this.validandoNit = false;
+      }
+    },
+
+    async identificar() {
+      this.error = null;
+      const nit = this.nitSolo();
+      if (nit.length < 6) {
+        this.error = 'Digite el NIT/identificación antes de continuar (el comprobante no lo trae).';
+        return;
+      }
+      this.form.nit_pagador = nit;
+      const ok = await this.validarNitPre();
+      if (!ok && this.nitValidado === false) {
+        this.error = this.nitMensaje || 'NIT inválido';
+        return;
+      }
+      this.step = 2;
     },
 
     async init() {
@@ -414,6 +512,8 @@ function app() {
       try {
         const fd = new FormData();
         fd.append('file', file);
+        fd.append('nit_pagador', this.nitSolo());
+        fd.append('dv_pagador', this.form.dv_pagador || '');
         const r = await fetch('/api/v1/upload', {
           method: 'POST',
           body: fd,
@@ -426,7 +526,7 @@ function app() {
         const j = await r.json();
         this.task_id = j.task_id;
         this.status = j.status;
-        this.step = 2;
+        this.step = 3;
         this.progress = 5;
         this.stageMsg = j.mensaje || 'Archivo recibido…';
         this.connectWs();
@@ -538,8 +638,11 @@ function app() {
     },
 
     applyDatos(d) {
-      this.form.nit_pagador = d.nit_pagador || '';
-      this.form.dv_pagador = d.dv_pagador || '';
+      if (d.nit_pagador) this.form.nit_pagador = d.nit_pagador;
+      if (d.dv_pagador) this.form.dv_pagador = d.dv_pagador;
+      if (!this.form.nit_pagador && this.nitSolo()) {
+        this.form.nit_pagador = this.nitSolo();
+      }
       this.form.fecha_transaccion = (d.fecha_transaccion || '').slice(0, 10);
       this.form.valor_total = String(d.valor_total ?? '');
       this.form.numero_referencia = d.numero_referencia || '';
@@ -562,7 +665,7 @@ function app() {
 
     goFacturar() {
       this.error = null;
-      this.step = 3;
+      this.step = 4;
     },
 
     async facturar() {
@@ -634,7 +737,7 @@ function app() {
         this.sigmaMsg = sigmaErr
           ? 'error: ' + sigmaErr.mensaje
           : (j.success ? 'ok (verificar en lista)' : '—');
-        this.step = 4;
+        this.step = 5;
         await this.loadFacturas();
         const row = this.facturas.find(f => f.numero_factura === j.numero_factura);
         if (row) {

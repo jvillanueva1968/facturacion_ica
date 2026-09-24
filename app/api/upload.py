@@ -1,6 +1,15 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks, Depends
+from fastapi import (
+    APIRouter,
+    UploadFile,
+    File,
+    Form,
+    HTTPException,
+    BackgroundTasks,
+    Depends,
+)
 from uuid import UUID, uuid4
 from pathlib import Path
+from typing import Optional
 import aiofiles
 import structlog
 from sqlalchemy.exc import DBAPIError, DataError, StatementError
@@ -13,7 +22,7 @@ from app.core.progress import emit_stage
 from app.core.rate_limit import limiter
 from app.services.ocr_service import OCRService
 from app.services.llm_service import LLMService
-from app.services.nit_validator import validar_nit_snri
+from app.services.nit_validator import validar_nit_snri, normalizar_nit_dv
 from app.services.snri_client import SNRIClient
 from app.config import get_settings
 from app.db.session import get_db, SessionLocal
@@ -37,6 +46,8 @@ snri_client = SNRIClient()
 async def upload_comprobante(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
+    nit_pagador: Optional[str] = Form(default=None),
+    dv_pagador: Optional[str] = Form(default=None),
     db: AsyncSession = Depends(get_db),
     request: Request = None,
     user: dict = Depends(require_operator),
@@ -47,6 +58,12 @@ async def upload_comprobante(
     content = await file.read()
     if len(content) > settings.max_file_size:
         raise HTTPException(413, f"Archivo muy grande. Máximo {settings.max_file_size/1024/1024}MB")
+
+    nit_pref = (nit_pagador or "").strip() or None
+    dv_pref = (dv_pagador or "").strip() or None
+    if nit_pref:
+        nit_pref, dv_embed = normalizar_nit_dv(nit_pref, dv_pref)
+        dv_pref = dv_pref or dv_embed
 
     task_id = str(uuid4())
     upload_dir = Path(settings.upload_dir)
@@ -65,9 +82,17 @@ async def upload_comprobante(
         status="processing",
     )
 
-    background_tasks.add_task(procesar_documento, task_id, file_path)
+    background_tasks.add_task(
+        procesar_documento, task_id, file_path, nit_pref, dv_pref
+    )
 
-    logger.info("archivo_recibido", task_id=task_id, filename=file.filename, size=len(content))
+    logger.info(
+        "archivo_recibido",
+        task_id=task_id,
+        filename=file.filename,
+        size=len(content),
+        nit_pref=nit_pref,
+    )
     await emit_stage(task_id, "received", mensaje="Archivo recibido, procesando...")
 
     return UploadResponse(
@@ -77,9 +102,28 @@ async def upload_comprobante(
     )
 
 
-async def procesar_documento(task_id: str, file_path: Path):
+def aplicar_identificacion_pref(
+    datos: DatosExtraidos,
+    nit_pref: Optional[str],
+    dv_pref: Optional[str],
+) -> DatosExtraidos:
+    """El comprobante no trae NIT: el NIT digitado antes del upload manda."""
+    if not nit_pref:
+        return datos
+    datos.nit_pagador = nit_pref
+    if dv_pref:
+        datos.dv_pagador = dv_pref
+    return DatosExtraidos(**datos.model_dump())
+
+
+async def procesar_documento(
+    task_id: str,
+    file_path: Path,
+    nit_pref: Optional[str] = None,
+    dv_pref: Optional[str] = None,
+):
     try:
-        logger.info("iniciando_procesamiento", task_id=task_id)
+        logger.info("iniciando_procesamiento", task_id=task_id, nit_pref=nit_pref)
         await emit_stage(task_id, "ocr_start", mensaje="Ejecutando OCR…")
 
         async with SessionLocal() as session:
@@ -97,6 +141,7 @@ async def procesar_documento(task_id: str, file_path: Path):
 
             await emit_stage(task_id, "llm_start", mensaje="Extrayendo datos con LLM…")
             datos = await llm_service.extraer_datos(texto_ocr)
+            datos = aplicar_identificacion_pref(datos, nit_pref, dv_pref)
             await repo.update_datos(
                 task_id,
                 datos=datos.model_dump(mode="json"),

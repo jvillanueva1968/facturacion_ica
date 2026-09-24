@@ -20,6 +20,86 @@ def test_root_serves_ui():
     assert "Facturación" in r.text or "app()" in r.text
 
 
+def test_ui_pide_nit_antes_de_upload():
+    r = client.get("/")
+    assert r.status_code == 200
+    html = r.text
+    assert "Identificación del pagador" in html
+    assert "antes" in html.lower()
+    assert "step===1" in html and "Identificación" in html
+    assert html.index("Identificación") < html.index("Cargar comprobante")
+
+
+def test_upload_acepta_nit_form():
+    from unittest.mock import AsyncMock, MagicMock, patch
+
+    from app.db.session import get_db
+
+    fake_repo = MagicMock()
+    fake_repo.create = AsyncMock(return_value=MagicMock())
+
+    async def _fake_db():
+        yield MagicMock()
+
+    with (
+        patch("app.api.upload.ComprobanteRepo", lambda session: fake_repo),
+        patch("app.api.upload.procesar_documento", AsyncMock()) as mock_proc,
+    ):
+        app.dependency_overrides[get_db] = _fake_db
+        try:
+            r = client.post(
+                "/api/v1/upload",
+                files={"file": ("ok.png", b"\x89PNG\r\n\x1a\n", "image/png")},
+                data={"nit_pagador": "8001972684", "dv_pagador": "4"},
+            )
+            assert r.status_code == 200
+            body = r.json()
+            assert body["task_id"]
+            assert body["status"] == "processing"
+            mock_proc.assert_awaited()
+            args = mock_proc.await_args.args
+            # procesar_documento(task_id, path, nit, dv)
+            assert args[0] == body["task_id"]
+            assert args[2] == "800197268"
+            assert args[3] == "4"
+        finally:
+            app.dependency_overrides.pop(get_db, None)
+
+
+def test_aplicar_identificacion_pref_sobre_ocr():
+    from datetime import date
+    from decimal import Decimal
+
+    from app.api.upload import aplicar_identificacion_pref
+    from app.models.schemas import DatosExtraidos, FormaPago
+
+    datos = DatosExtraidos(
+        forma_pago=FormaPago.CONSIGNACION,
+        servicios=[{"codigo": "1", "nombre": "X", "valor": "1000"}],
+        nit_pagador="",
+        dv_pagador=None,
+        fecha_transaccion=date(2026, 9, 20),
+        valor_total=Decimal("1000"),
+        numero_referencia="REF-OCR",
+    )
+    out = aplicar_identificacion_pref(datos, "800197268", "4")
+    assert out.nit_pagador == "800197268"
+    assert out.dv_pagador == "4"
+
+    # sin NIT pre-digitado se conserva lo del OCR/LLM
+    datos2 = DatosExtraidos(
+        forma_pago=FormaPago.CONSIGNACION,
+        servicios=[],
+        nit_pagador="900456789",
+        dv_pagador="1",
+        fecha_transaccion=date(2026, 9, 20),
+        valor_total=Decimal("1000"),
+        numero_referencia="REF-2",
+    )
+    out2 = aplicar_identificacion_pref(datos2, None, None)
+    assert out2.nit_pagador == "900456789"
+
+
 def test_calcular_dv():
     r = client.get("/api/v1/nit/calcular-dv/800197268")
     assert r.status_code == 200
