@@ -42,5 +42,6 @@ docker/tmp_*.json
 docker/e2e_fact.json
 docker/make_receipt.py
 docker/comprobante_e2e.png
+docker/ws_smoke.py
 
 

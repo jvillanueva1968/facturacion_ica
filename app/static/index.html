@@ -172,10 +172,18 @@
       <span class="badge info" x-show="status==='processing'">Procesando…</span>
       <span class="badge ok" x-show="status==='completed'">Completado</span>
       <span class="badge err" x-show="status==='failed'">Falló</span>
+      <span class="badge" :class="wsOk ? 'info' : 'warn'"
+            x-text="wsOk ? 'tiempo real' : 'polling'"
+            x-show="status==='processing'"></span>
     </h2>
 
-    <div class="progress" x-show="status==='processing'"><div></div></div>
-    <p class="muted" x-show="status==='processing'">OCR → LLM → validación NIT…</p>
+    <div class="progress" x-show="status==='processing'">
+      <div :style="'width:' + (progress || 40) + '%; animation:none; margin:0; transition:width .3s'"
+           x-show="wsOk && progress"></div>
+      <div x-show="!wsOk || !progress"></div>
+    </div>
+    <p class="muted" x-show="status==='processing'"
+       x-text="stageMsg || 'OCR → LLM → validación NIT…'"></p>
     <div class="msg err" x-show="status==='failed'" x-text="error || 'Error procesando'"></div>
 
     <template x-if="status==='completed' && datos">
@@ -346,6 +354,10 @@ function app() {
     facturas: [],
     datos: null,
     pollTimer: null,
+    ws: null,
+    wsOk: false,
+    progress: 0,
+    stageMsg: '',
     jwt: localStorage.getItem('ica_jwt') || '',
     form: {
       nit_pagador: '', dv_pagador: '', fecha_transaccion: '', valor_total: '',
@@ -409,11 +421,77 @@ function app() {
         this.task_id = j.task_id;
         this.status = j.status;
         this.step = 2;
-        this.startPoll();
+        this.progress = 5;
+        this.stageMsg = j.mensaje || 'Archivo recibido…';
+        this.connectWs();
       } catch (err) {
         this.error = err.message || String(err);
       } finally {
         this.uploading = false;
+      }
+    },
+
+    wsUrl() {
+      const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+      let url = proto + '//' + location.host + '/api/v1/ws/status/' + this.task_id;
+      if (this.jwt) url += '?token=' + encodeURIComponent(this.jwt);
+      return url;
+    },
+
+    connectWs() {
+      this.closeWs();
+      this.wsOk = false;
+      try {
+        const ws = new WebSocket(this.wsUrl());
+        this.ws = ws;
+        ws.onopen = () => { this.wsOk = true; };
+        ws.onmessage = (ev) => {
+          try { this.handleProgress(JSON.parse(ev.data)); }
+          catch { /* ignore */ }
+        };
+        ws.onclose = () => {
+          this.wsOk = false;
+          if (this.status === 'processing' && this.task_id) this.startPoll();
+        };
+        ws.onerror = () => { this.wsOk = false; };
+      } catch {
+        this.wsOk = false;
+        this.startPoll();
+      }
+      // fallback si WS no abre en 2s
+      setTimeout(() => {
+        if (!this.wsOk && this.status === 'processing') this.startPoll();
+      }, 2000);
+    },
+
+    closeWs() {
+      if (this.ws) {
+        try { this.ws.close(); } catch { /* ignore */ }
+        this.ws = null;
+      }
+      this.wsOk = false;
+    },
+
+    handleProgress(j) {
+      if (j.type === 'ping') return;
+      if (j.task_id && this.task_id && j.task_id !== this.task_id) return;
+      if (j.status) this.status = j.status;
+      if (j.progress != null) this.progress = j.progress;
+      if (j.mensaje) this.stageMsg = j.mensaje;
+      if (j.datos) {
+        this.datos = j.datos;
+        this.applyDatos(j.datos);
+      }
+      if (j.nit_validado != null) this.nitValidado = j.nit_validado;
+      if (j.nit_mensaje) this.nitMensaje = j.nit_mensaje;
+      if (j.status === 'completed' || j.status === 'failed') {
+        this.closeWs();
+        clearInterval(this.pollTimer);
+        if (j.status === 'completed') {
+          this.loadComprobante();
+        } else {
+          this.error = (j.errores || []).join('; ') || j.mensaje || 'Falló el procesamiento';
+        }
       }
     },
 
@@ -432,6 +510,7 @@ function app() {
           }
           if (j.status === 'completed' || j.status === 'failed') {
             clearInterval(this.pollTimer);
+            this.closeWs();
             if (j.status === 'completed') {
               await this.loadComprobante();
             } else {
@@ -572,11 +651,14 @@ function app() {
 
     reset() {
       clearInterval(this.pollTimer);
+      this.closeWs();
       this.step = 1;
       this.task_id = null;
       this.status = null;
       this.datos = null;
       this.error = null;
+      this.progress = 0;
+      this.stageMsg = '';
       this.nitValidado = null;
       this.nitMensaje = null;
       this.facturaResult = null;

@@ -263,6 +263,17 @@ Bearer es obligatorio. El header se envía desde la UI si guardas el JWT en
 
 Rate limiting (slowapi): 60/min global; upload 10/min; facturar 20/min; emisión JWT 10/min.
 
+### Progreso en tiempo real (WebSocket)
+
+```
+ws://localhost:8000/api/v1/ws/status/{task_id}
+ws://localhost:8000/api/v1/ws/status/{task_id}?token=JWT   # si auth activo
+```
+
+Eventos JSON: `stage` (`received|ocr_start|ocr_done|llm_start|llm_done|nit_start|completed|failed`),
+`status`, `progress` (0-100), `mensaje`, `datos`, `nit_validado`, `nit_mensaje`.
+La UI se suscribe tras el upload; si el WS no conecta, usa polling `/status/{task_id}`.
+
 ---
 
 ## 12. Detener y Limpiar

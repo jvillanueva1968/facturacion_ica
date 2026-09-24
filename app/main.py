@@ -8,7 +8,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 from app.config import get_settings
-from app.api import upload, facturar, validate, catalogos
+from app.api import upload, facturar, validate, catalogos, ws
 from app.core.deps import require_auth, require_viewer
 from app.core.rate_limit import install_rate_limit, limiter
 from app.core.security import ROLE_ADMIN, ROLE_OPERATOR, ROLE_VIEWER, VALID_ROLES, create_access_token, normalize_roles
@@ -98,6 +98,7 @@ app.include_router(upload.router, prefix="/api/v1", tags=["upload"])
 app.include_router(facturar.router, prefix="/api/v1", tags=["facturacion"])
 app.include_router(validate.router, prefix="/api/v1", tags=["validacion"])
 app.include_router(catalogos.router, prefix="/api/v1", tags=["catalogos"])
+app.include_router(ws.router, prefix="/api/v1", tags=["websocket"])
 
 
 @app.post("/api/v1/auth/jwt", tags=["auth"])

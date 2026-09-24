@@ -212,7 +212,7 @@ docker exec facturacion-ollama ollama pull llama3.2:3b
 - [x] Mock PHP `/api/facturas/registrar` (idempotencia + token) — pendiente endpoint real del equipo PHP
 - [x] Idempotencia por `numero_referencia` / `numero_consignacion`
 - [x] Frontend Alpine.js: upload, preview OCR, validación, facturación (4 pasos)
-- [ ] WebSocket para progreso tiempo real (usa polling actual)
+- [x] WebSocket para progreso tiempo real (`/api/v1/ws/status/{task_id}`, fallback polling)
 
 ### Semana 4: Hardening
 - [x] JWT Auth + Bearer (dev opcional / prod obligatorio) + endpoint `/auth/jwt`

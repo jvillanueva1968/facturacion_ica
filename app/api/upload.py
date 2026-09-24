@@ -8,6 +8,7 @@ from fastapi import Request
 
 from app.models.schemas import UploadResponse, DatosExtraidos, ComprobanteOut
 from app.core.deps import require_operator, require_viewer
+from app.core.progress import emit_stage
 from app.core.rate_limit import limiter
 from app.services.ocr_service import OCRService
 from app.services.llm_service import LLMService
@@ -66,6 +67,7 @@ async def upload_comprobante(
     background_tasks.add_task(procesar_documento, task_id, file_path)
 
     logger.info("archivo_recibido", task_id=task_id, filename=file.filename, size=len(content))
+    await emit_stage(task_id, "received", mensaje="Archivo recibido, procesando...")
 
     return UploadResponse(
         task_id=task_id,
@@ -77,6 +79,7 @@ async def upload_comprobante(
 async def procesar_documento(task_id: str, file_path: Path):
     try:
         logger.info("iniciando_procesamiento", task_id=task_id)
+        await emit_stage(task_id, "ocr_start", mensaje="Ejecutando OCR…")
 
         async with SessionLocal() as session:
             repo = ComprobanteRepo(session)
@@ -84,7 +87,14 @@ async def procesar_documento(task_id: str, file_path: Path):
             texto_ocr, confianza, paginas = ocr_service.extract_text(file_path)
             await repo.update_ocr(task_id, texto=texto_ocr, confianza=confianza, paginas=paginas)
             logger.info("ocr_completado", task_id=task_id, confianza=confianza, paginas=paginas)
+            await emit_stage(
+                task_id,
+                "ocr_done",
+                mensaje="OCR completado",
+                confianza=confianza,
+            )
 
+            await emit_stage(task_id, "llm_start", mensaje="Extrayendo datos con LLM…")
             datos = await llm_service.extraer_datos(texto_ocr)
             await repo.update_datos(
                 task_id,
@@ -92,7 +102,14 @@ async def procesar_documento(task_id: str, file_path: Path):
                 status="processing",
             )
             logger.info("llm_extraccion_completada", task_id=task_id, nit=datos.nit_pagador)
+            await emit_stage(
+                task_id,
+                "llm_done",
+                mensaje="Datos extraídos",
+                datos=datos.model_dump(mode="json"),
+            )
 
+            await emit_stage(task_id, "nit_start", mensaje="Validando NIT…")
             nit_result = await validar_nit_snri(
                 datos.nit_pagador, datos.dv_pagador or "", snri_client
             )
@@ -105,9 +122,19 @@ async def procesar_documento(task_id: str, file_path: Path):
                 errores=[],
             )
             logger.info("nit_validado", task_id=task_id, resultado=nit_result)
+            await emit_stage(
+                task_id,
+                "completed",
+                mensaje="Completado",
+                datos=datos.model_dump(mode="json"),
+                errores=[],
+                nit_validado=nit_result.get("valido"),
+                nit_mensaje=nit_result.get("mensaje"),
+            )
 
     except Exception as e:
         logger.error("error_procesamiento", task_id=task_id, error=str(e))
+        await emit_stage(task_id, "failed", mensaje=str(e), errores=[str(e)])
         try:
             async with SessionLocal() as session:
                 await ComprobanteRepo(session).mark_failed(task_id, str(e))
