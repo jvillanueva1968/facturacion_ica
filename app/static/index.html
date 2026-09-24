@@ -171,6 +171,44 @@
          x-text="'NIT OK: ' + (nitMensaje || '')"></div>
     <div class="msg err" x-show="nitValidado===false && nitMensaje"
          x-text="'NIT: ' + (nitMensaje || '')"></div>
+
+    <div class="msg info" style="margin-top:0.75rem" x-show="terceroSnri">
+      <strong>Tercero SNRI (solo lectura)</strong>
+      <div class="grid" style="margin-top:0.5rem">
+        <label>Tipo persona
+          <input :value="String(form.id_tipo_persona)==='2' ? '2 — Jurídica (razón social)' : '1 — Natural (nombres/apellidos)'"
+                 readonly />
+        </label>
+        <template x-if="String(form.id_tipo_persona) === '2'">
+          <label>Razón social
+            <input :value="form.nombre_razon_social" readonly />
+          </label>
+        </template>
+        <template x-if="String(form.id_tipo_persona) !== '2'">
+          <label>Nombre completo
+            <input :value="nombreCompuesto() || form.nombre_razon_social" readonly />
+          </label>
+        </template>
+        <template x-if="String(form.id_tipo_persona) !== '2'">
+          <div class="span2 grid">
+            <label>Primer nombre <input :value="form.primer_nombre" readonly /></label>
+            <label>Segundo nombre <input :value="form.segundo_nombre" readonly /></label>
+            <label>Primer apellido <input :value="form.primer_apellido" readonly /></label>
+            <label>Segundo apellido <input :value="form.segundo_apellido" readonly /></label>
+          </div>
+        </template>
+        <label>Id tercero SNRI
+          <input :value="terceroSnri?.id_tercero ?? '—'" readonly />
+        </label>
+        <label>Régimen
+          <input :value="(terceroSnri?.regimen_simplificado ? 'Simplificado' : '') + (terceroSnri?.regimen_comun ? ' Común' : '') || '—'"
+                 readonly />
+        </label>
+      </div>
+      <p class="muted" style="margin:0.5rem 0 0">
+        Datos obtenidos de la consulta SNRI; no se digitan.
+      </p>
+    </div>
     <div class="actions">
       <button class="secondary" @click="validarNitPre()" :disabled="validandoNit"
               x-text="validandoNit ? 'Validando…' : 'Validar NIT'"></button>
@@ -555,13 +593,18 @@ function app() {
           headers: { 'Content-Type': 'application/json', ...this.authHeaders() },
           body: JSON.stringify({ nit: this.nitSolo(), dv: this.form.dv_pagador || null }),
         });
-        if (!r.ok) return;
         const j = await r.json().catch(() => ({}));
         if (j.datos_snri) {
           this.aplicarTerceroSnri(j.datos_snri);
           if (j.mensaje) this.nitMensaje = j.mensaje;
+        } else {
+          this.terceroSnri = null;
+          if (j.mensaje) this.nitMensaje = j.mensaje;
         }
-      } catch { /* SNRI opcional en step 1 */ }
+      } catch (e) {
+        this.terceroSnri = null;
+        this.nitMensaje = (e && e.message) || 'No fue posible consultar SNRI';
+      }
     },
 
     async identificar() {

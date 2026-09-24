@@ -81,6 +81,9 @@ async def validar_nit_con_snri(request: Request, body: NITValidateRequest, user:
 
     dv = dv_limpio or body.dv or calcular_dv_nit(nit_limpio)
 
+    if not snri_client.token:
+        await _asegurar_token_snri()
+
     resultado = await validar_nit_snri(nit_limpio, dv, snri_client)
 
     return NITValidateResponse(
@@ -90,6 +93,24 @@ async def validar_nit_con_snri(request: Request, body: NITValidateRequest, user:
         dv_ingresado=body.dv,
         mensaje=resultado["mensaje"],
         datos_snri=resultado.get("datos")
+    )
+
+
+async def _asegurar_token_snri() -> None:
+    from app.config import get_settings
+    from app.models.schemas import InicioTransaccionRequest
+
+    s = get_settings()
+    if not (s.snri_id_proyecto and s.snri_username and s.snri_password):
+        return
+    await snri_client.obtener_token(
+        InicioTransaccionRequest(
+            id_proyecto=s.snri_id_proyecto,
+            username=s.snri_username,
+            pass_=s.snri_password,
+            ip=s.snri_ip or None,
+            proceso=s.snri_proceso or None,
+        )
     )
 
 

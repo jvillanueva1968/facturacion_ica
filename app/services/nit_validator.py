@@ -76,7 +76,9 @@ async def validar_nit_snri(nit: str, dv: str, snri_client=None) -> dict:
                     "mensaje": f"NIT válido (algoritmo) pero no existe en SNRI ({detalle})",
                     "datos": None
                 }
+            _nit_cache[cache_key] = resultado
         else:
+            # sin token SNRI: no cachear (habrá token en el siguiente intento)
             resultado = {
                 "valido": True,
                 "mensaje": "NIT válido (validación local algoritmo DIAN)",
@@ -85,8 +87,8 @@ async def validar_nit_snri(nit: str, dv: str, snri_client=None) -> dict:
 
     except Exception as e:
         resultado = {"valido": False, "mensaje": f"Error validando: {str(e)}", "datos": None}
+        _nit_cache[cache_key] = resultado
 
-    _nit_cache[cache_key] = resultado
     return resultado
 
 
