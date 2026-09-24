@@ -270,6 +270,25 @@
               <option>DATAFONO</option>
             </select>
           </label>
+          <label>Tipo de persona
+            <select x-model="form.id_tipo_persona" @change="syncNombreTipoPersona()">
+              <option value="1">1 — Natural (nombres/apellidos)</option>
+              <option value="2">2 — Jurídica (razón social)</option>
+            </select>
+          </label>
+          <template x-if="String(form.id_tipo_persona) === '2'">
+            <label class="span2">Razón social
+              <input x-model="form.nombre_razon_social" placeholder="EMPRESA SAS" />
+            </label>
+          </template>
+          <template x-if="String(form.id_tipo_persona) !== '2'">
+            <div class="span2 grid">
+              <label>Primer nombre <input x-model="form.primer_nombre" /></label>
+              <label>Segundo nombre <input x-model="form.segundo_nombre" /></label>
+              <label>Primer apellido <input x-model="form.primer_apellido" /></label>
+              <label>Segundo apellido <input x-model="form.segundo_apellido" /></label>
+            </div>
+          </template>
         </div>
 
         <h2 style="margin-top:1.25rem">Servicios</h2>
@@ -419,10 +438,39 @@ function app() {
       nit_pagador: '', dv_pagador: '', fecha_transaccion: '', valor_total: '',
       numero_referencia: '', banco: '', forma_pago: 'CONSIGNACION',
       nombre_razon_social: '', servicios: [],
+      id_tipo_persona: '1',
+      primer_nombre: '', segundo_nombre: '', primer_apellido: '', segundo_apellido: '',
       id_proyecto: '1', id_seccional: '1', id_entidad: '1',
       id_forma_pago: '1', id_banco: '1', id_servicio: '',
       id_departamento: '11', id_ciudad: '11001',
       direccion_principal: 'Calle 1 # 2-3', token: '', modo: 'auto',
+    },
+
+    nombreCompuesto() {
+      if (String(this.form.id_tipo_persona) === '2') {
+        return (this.form.nombre_razon_social || '').trim();
+      }
+      return [this.form.primer_nombre, this.form.segundo_nombre,
+              this.form.primer_apellido, this.form.segundo_apellido]
+        .map(s => (s || '').trim()).filter(Boolean).join(' ');
+    },
+
+    syncNombreTipoPersona() {
+      if (String(this.form.id_tipo_persona) === '2') {
+        if (!this.form.nombre_razon_social && this.nombreCompuesto()) {
+          this.form.nombre_razon_social = this.nombreCompuesto();
+        }
+      } else if (!this.nombreCompuesto() && this.form.nombre_razon_social) {
+        const tok = this.form.nombre_razon_social.split(/\s+/).filter(Boolean);
+        if (tok.length >= 1) this.form.primer_nombre = tok[0] || '';
+        if (tok.length >= 3) {
+          this.form.segundo_nombre = '';
+          this.form.primer_apellido = tok[1] || '';
+          this.form.segundo_apellido = tok.slice(2).join(' ');
+        } else if (tok.length === 2) {
+          this.form.primer_apellido = tok[1] || '';
+        }
+      }
     },
 
     authHeaders() {
@@ -682,8 +730,16 @@ function app() {
         }));
         this.form.id_servicio = d.servicios[0].codigo || '';
       }
-      if (!this.form.nombre_razon_social) {
-        this.form.nombre_razon_social = '';
+      if (d.tipo_documento) this.form.tipo_documento = d.tipo_documento;
+      // tipo persona / nombres solo si el usuario no los puso a mano
+      if (!this.form.nombre_razon_social && !this.nombreCompuesto()) {
+        if (d.primer_nombre || d.primer_apellido) {
+          this.form.id_tipo_persona = '1';
+          this.form.primer_nombre = d.primer_nombre || '';
+          this.form.segundo_nombre = d.segundo_nombre || '';
+          this.form.primer_apellido = d.primer_apellido || '';
+          this.form.segundo_apellido = d.segundo_apellido || '';
+        }
       }
     },
 
@@ -704,7 +760,12 @@ function app() {
           id_entidad: this.form.id_entidad,
           nit_pagador: this.form.nit_pagador,
           dv_pagador: this.form.dv_pagador,
-          nombre_razon_social: this.form.nombre_razon_social || 'Tercero',
+          id_tipo_persona: Number(this.form.id_tipo_persona) || 1,
+          primer_nombre: this.form.primer_nombre || null,
+          segundo_nombre: this.form.segundo_nombre || null,
+          primer_apellido: this.form.primer_apellido || null,
+          segundo_apellido: this.form.segundo_apellido || null,
+          nombre_razon_social: this.nombreCompuesto() || this.form.nombre_razon_social || 'Tercero',
           id_departamento: Number(this.form.id_departamento),
           id_ciudad: Number(this.form.id_ciudad),
           direccion_principal: this.form.direccion_principal,
@@ -837,6 +898,12 @@ function app() {
       this.form.dv_pagador = '';
       this.form.numero_referencia = '';
       this.form.valor_total = '';
+      this.form.nombre_razon_social = '';
+      this.form.id_tipo_persona = '1';
+      this.form.primer_nombre = '';
+      this.form.segundo_nombre = '';
+      this.form.primer_apellido = '';
+      this.form.segundo_apellido = '';
       this.loadFacturas();
     },
   };

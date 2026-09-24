@@ -28,6 +28,8 @@ from app.models.schemas import (
     SNRITipoDocumento,
     SNRITipoPersona,
     FacturaImpresaResponse,
+    dividir_nombre_en_partes,
+    componer_nombre_persona,
 )
 
 logger = logging.getLogger(__name__)
@@ -414,12 +416,48 @@ class SNRIClient:
             nit_cc = str(self._field(item, "NitCc") or self._field(item, "NroIdentificacion") or documento)
             # base sin DV si viene "93361223" o con DV
             base = "".join(filter(str.isdigit, nit_cc))
+            nombre = str(self._field(item, "Nombre") or self._field(item, "NombreRazonSocial") or "")
+            tipo_persona_txt = str(
+                self._field(item, "TIPO_PERSONA")
+                or self._field(item, "TipoPersona")
+                or self._field(item, "Id_tipo_persona")
+                or ""
+            ).upper()
+            # 2 = jurídica / razón social; 1 = natural (nombres + apellidos)
+            if "JURID" in tipo_persona_txt or "SOCIEDAD" in tipo_persona_txt or "EMPRES" in tipo_persona_txt:
+                id_tipo_persona = 2
+            elif "NATURAL" in tipo_persona_txt or "PERSONA NATURAL" in tipo_persona_txt:
+                id_tipo_persona = 1
+            else:
+                # Id_tipo_doc=1 suele ser NIT (jurídica en SNRI ICA); cédula → natural
+                id_doc = self._int_or_none(self._field(item, "Id_tipo_doc") or self._field(item, "IdTipoDocumento"))
+                tipo_doc_txt = str(self._field(item, "Tipo_Documento") or "").upper()
+                if "NIT" in tipo_doc_txt or (id_doc is not None and id_doc == 1 and "CEDULA" not in tipo_doc_txt):
+                    id_tipo_persona = 2
+                elif "CEDULA" in tipo_doc_txt or id_doc == 2:
+                    id_tipo_persona = 1
+                else:
+                    id_tipo_persona = 1
+
+            if id_tipo_persona == 2:
+                primer_nombre = segundo_nombre = primer_apellido = segundo_apellido = None
+            else:
+                partes = dividir_nombre_en_partes(nombre)
+                primer_nombre = partes["primer_nombre"]
+                segundo_nombre = partes["segundo_nombre"]
+                primer_apellido = partes["primer_apellido"]
+                segundo_apellido = partes["segundo_apellido"]
+
             return TerceroResponse(
                 id_tercero=int(self._field(item, "Id") or self._field(item, "IdTercero") or 0) or None,
                 nro_identificacion=base,
-                nombre_razon_social=str(self._field(item, "Nombre") or self._field(item, "NombreRazonSocial") or ""),
+                nombre_razon_social=nombre,
+                primer_nombre=primer_nombre,
+                segundo_nombre=segundo_nombre,
+                primer_apellido=primer_apellido,
+                segundo_apellido=segundo_apellido,
                 id_tipo_documento=self._int_or_none(self._field(item, "Id_tipo_doc") or self._field(item, "IdTipoDocumento")),
-                id_tipo_persona=None,
+                id_tipo_persona=id_tipo_persona,
                 gran_contribuyente=1 if str(self._field(item, "GRAN_CONTRIBUYENTE") or "").upper() == "SI" else 0,
                 autorretenedor=1 if str(self._field(item, "AUTORRETENEDOR") or "").upper() == "SI" else 0,
                 regimen_comun=1 if str(self._field(item, "REGIMEN_COMUN") or "").upper() == "SI" else 0,

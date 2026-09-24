@@ -131,6 +131,10 @@ class TerceroResponse(BaseModel):
     id_tercero: Optional[int] = None
     nro_identificacion: Optional[str] = None
     nombre_razon_social: Optional[str] = None
+    primer_nombre: Optional[str] = None
+    segundo_nombre: Optional[str] = None
+    primer_apellido: Optional[str] = None
+    segundo_apellido: Optional[str] = None
     id_tipo_documento: Optional[int] = None
     id_tipo_persona: Optional[int] = None
     gran_contribuyente: Optional[int] = None
@@ -144,6 +148,68 @@ class TerceroResponse(BaseModel):
     email: Optional[str] = None
     success: bool
     errores: List[dict] = []
+
+
+def componer_nombre_persona(
+    id_tipo_persona: int,
+    nombre_razon_social: Optional[str] = None,
+    primer_nombre: Optional[str] = None,
+    segundo_nombre: Optional[str] = None,
+    primer_apellido: Optional[str] = None,
+    segundo_apellido: Optional[str] = None,
+) -> str:
+    """Tipo 2 (jurídica) → razón social; si no → primer_nombre + segundo_nombre + apellidos."""
+    if id_tipo_persona == 2:
+        return (nombre_razon_social or "").strip()
+    partes = [
+        (primer_nombre or "").strip(),
+        (segundo_nombre or "").strip(),
+        (primer_apellido or "").strip(),
+        (segundo_apellido or "").strip(),
+    ]
+    compuesto = " ".join(p for p in partes if p)
+    if compuesto:
+        return compuesto
+    return (nombre_razon_social or "").strip()
+
+
+def dividir_nombre_en_partes(nombre: str) -> dict:
+    """Divide 'IGNACIO BOHORQUEZ PAEZ' → 1er nombre, 2do nombre, 1er apellido, 2do apellido."""
+    tokens = [t for t in (nombre or "").split() if t]
+    if not tokens:
+        return {
+            "primer_nombre": None,
+            "segundo_nombre": None,
+            "primer_apellido": None,
+            "segundo_apellido": None,
+        }
+    if len(tokens) == 1:
+        return {
+            "primer_nombre": tokens[0],
+            "segundo_nombre": None,
+            "primer_apellido": None,
+            "segundo_apellido": None,
+        }
+    if len(tokens) == 2:
+        return {
+            "primer_nombre": tokens[0],
+            "segundo_nombre": None,
+            "primer_apellido": tokens[1],
+            "segundo_apellido": None,
+        }
+    if len(tokens) == 3:
+        return {
+            "primer_nombre": tokens[0],
+            "segundo_nombre": None,
+            "primer_apellido": tokens[1],
+            "segundo_apellido": tokens[2],
+        }
+    return {
+        "primer_nombre": tokens[0],
+        "segundo_nombre": tokens[1],
+        "primer_apellido": tokens[2],
+        "segundo_apellido": " ".join(tokens[3:]),
+    }
 
 
 class TerceroCreateRequest(BaseModel):

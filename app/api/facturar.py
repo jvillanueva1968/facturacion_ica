@@ -13,6 +13,7 @@ from app.models.schemas import (
     FacturaImpresaResponse,
     FormaPago,
     FacturaOut,
+    componer_nombre_persona,
 )
 from app.core.deps import require_operator, require_viewer
 from app.core.rate_limit import limiter
@@ -42,6 +43,10 @@ class FacturaSimpleInput(BaseModel):
     nombre_razon_social: str
     id_tipo_documento: int = 1
     id_tipo_persona: int = 2
+    primer_nombre: Optional[str] = None
+    segundo_nombre: Optional[str] = None
+    primer_apellido: Optional[str] = None
+    segundo_apellido: Optional[str] = None
     gran_contribuyente: int = 0
     autorretenedor: int = 0
     regimen_comun: int = 1
@@ -62,6 +67,16 @@ class FacturaSimpleInput(BaseModel):
     observaciones: Optional[str] = None
     ticket_id: Optional[str] = None
 
+    def nombre_para_snri(self) -> str:
+        return componer_nombre_persona(
+            self.id_tipo_persona,
+            self.nombre_razon_social,
+            self.primer_nombre,
+            self.segundo_nombre,
+            self.primer_apellido,
+            self.segundo_apellido,
+        )
+
 
 class FacturaDetalleInput(BaseModel):
     id_proyecto: str
@@ -72,6 +87,10 @@ class FacturaDetalleInput(BaseModel):
     nombre_razon_social: str
     id_tipo_documento: int = 1
     id_tipo_persona: int = 2
+    primer_nombre: Optional[str] = None
+    segundo_nombre: Optional[str] = None
+    primer_apellido: Optional[str] = None
+    segundo_apellido: Optional[str] = None
     gran_contribuyente: int = 0
     autorretenedor: int = 0
     regimen_comun: int = 1
@@ -88,6 +107,16 @@ class FacturaDetalleInput(BaseModel):
     observaciones: Optional[str] = None
     ticket_id: Optional[str] = None
     detalles: List[FacturaDetalle]
+
+    def nombre_para_snri(self) -> str:
+        return componer_nombre_persona(
+            self.id_tipo_persona,
+            self.nombre_razon_social,
+            self.primer_nombre,
+            self.segundo_nombre,
+            self.primer_apellido,
+            self.segundo_apellido,
+        )
 
 
 @router.get("/facturas", response_model=List[FacturaOut])
@@ -213,18 +242,25 @@ async def crear_factura_simple(
             id_entidad=input_data.id_entidad,
             id_tercero=str(tercero.id_tercero),
             id_tipo_documento=input_data.id_tipo_documento,
-            id_tipo_persona=input_data.id_tipo_persona,
-            gran_contribuyente=input_data.gran_contribuyente,
-            autorretenedor=input_data.autorretenedor,
-            regimen_comun=input_data.regimen_comun,
-            regimen_simplificado=input_data.regimen_simplificado,
+            id_tipo_persona=tercero.id_tipo_persona or input_data.id_tipo_persona,
+            gran_contribuyente=tercero.gran_contribuyente if tercero.gran_contribuyente is not None else input_data.gran_contribuyente,
+            autorretenedor=tercero.autorretenedor if tercero.autorretenedor is not None else input_data.autorretenedor,
+            regimen_comun=tercero.regimen_comun if tercero.regimen_comun is not None else input_data.regimen_comun,
+            regimen_simplificado=tercero.regimen_simplificado if tercero.regimen_simplificado is not None else input_data.regimen_simplificado,
             nro_identificacion=f"{input_data.nit_pagador}-{input_data.dv_pagador}",
-            nombre_razon_social=tercero.nombre_razon_social or input_data.nombre_razon_social,
-            id_departamento=input_data.id_departamento,
-            id_ciudad=input_data.id_ciudad,
-            direccion_principal=input_data.direccion_principal,
-            telefono=input_data.telefono,
-            email=input_data.email,
+            nombre_razon_social=componer_nombre_persona(
+                tercero.id_tipo_persona or input_data.id_tipo_persona,
+                tercero.nombre_razon_social or input_data.nombre_razon_social,
+                tercero.primer_nombre or input_data.primer_nombre,
+                tercero.segundo_nombre or input_data.segundo_nombre,
+                tercero.primer_apellido or input_data.primer_apellido,
+                tercero.segundo_apellido or input_data.segundo_apellido,
+            ) or input_data.nombre_razon_social,
+            id_departamento=tercero.id_departamento or input_data.id_departamento,
+            id_ciudad=tercero.id_ciudad or input_data.id_ciudad,
+            direccion_principal=tercero.direccion_principal or input_data.direccion_principal,
+            telefono=tercero.telefono or input_data.telefono,
+            email=tercero.email or input_data.email,
             id_forma_pago=input_data.id_forma_pago,
             id_banco=input_data.id_banco,
             numero_consignacion=input_data.numero_consignacion,
@@ -366,18 +402,25 @@ async def crear_factura_detalle(
             id_entidad=input_data.id_entidad,
             id_tercero=str(tercero.id_tercero),
             id_tipo_documento=input_data.id_tipo_documento,
-            id_tipo_persona=input_data.id_tipo_persona,
-            gran_contribuyente=input_data.gran_contribuyente,
-            autorretenedor=input_data.autorretenedor,
-            regimen_comun=input_data.regimen_comun,
-            regimen_simplificado=input_data.regimen_simplificado,
+            id_tipo_persona=tercero.id_tipo_persona or input_data.id_tipo_persona,
+            gran_contribuyente=tercero.gran_contribuyente if tercero.gran_contribuyente is not None else input_data.gran_contribuyente,
+            autorretenedor=tercero.autorretenedor if tercero.autorretenedor is not None else input_data.autorretenedor,
+            regimen_comun=tercero.regimen_comun if tercero.regimen_comun is not None else input_data.regimen_comun,
+            regimen_simplificado=tercero.regimen_simplificado if tercero.regimen_simplificado is not None else input_data.regimen_simplificado,
             nro_identificacion=f"{input_data.nit_pagador}-{input_data.dv_pagador}",
-            nombre_razon_social=tercero.nombre_razon_social or input_data.nombre_razon_social,
-            id_departamento=input_data.id_departamento,
-            id_ciudad=input_data.id_ciudad,
-            direccion_principal=input_data.direccion_principal,
-            telefono=input_data.telefono,
-            email=input_data.email,
+            nombre_razon_social=componer_nombre_persona(
+                tercero.id_tipo_persona or input_data.id_tipo_persona,
+                tercero.nombre_razon_social or input_data.nombre_razon_social,
+                tercero.primer_nombre or input_data.primer_nombre,
+                tercero.segundo_nombre or input_data.segundo_nombre,
+                tercero.primer_apellido or input_data.primer_apellido,
+                tercero.segundo_apellido or input_data.segundo_apellido,
+            ) or input_data.nombre_razon_social,
+            id_departamento=tercero.id_departamento or input_data.id_departamento,
+            id_ciudad=tercero.id_ciudad or input_data.id_ciudad,
+            direccion_principal=tercero.direccion_principal or input_data.direccion_principal,
+            telefono=tercero.telefono or input_data.telefono,
+            email=tercero.email or input_data.email,
             id_forma_pago=input_data.id_forma_pago,
             id_banco=input_data.id_banco,
             numero_consignacion=input_data.numero_consignacion,
