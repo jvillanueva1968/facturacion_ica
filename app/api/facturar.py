@@ -13,7 +13,7 @@ from app.models.schemas import (
     FormaPago,
     FacturaOut,
 )
-from app.core.deps import require_auth
+from app.core.deps import require_operator, require_viewer
 from app.core.rate_limit import limiter
 from app.services.snri_client import SNRIClient
 from app.services.sigma_client import SigmaClient
@@ -89,13 +89,21 @@ class FacturaDetalleInput(BaseModel):
 
 
 @router.get("/facturas", response_model=List[FacturaOut])
-async def listar_facturas(limit: int = 50, db: AsyncSession = Depends(get_db)):
+async def listar_facturas(
+    limit: int = 50,
+    db: AsyncSession = Depends(get_db),
+    user: dict = Depends(require_viewer),
+):
     repo = FacturaRepo(db)
     return await repo.list_recent(limit=limit)
 
 
 @router.get("/facturas/{factura_id}", response_model=FacturaOut)
-async def obtener_factura(factura_id: str, db: AsyncSession = Depends(get_db)):
+async def obtener_factura(
+    factura_id: str,
+    db: AsyncSession = Depends(get_db),
+    user: dict = Depends(require_viewer),
+):
     repo = FacturaRepo(db)
     row = await repo.get(factura_id)
     if not row:
@@ -109,7 +117,7 @@ async def crear_factura_simple(
     input_data: FacturaSimpleInput,
     db: AsyncSession = Depends(get_db),
     request: Request = None,
-    user: dict = Depends(require_auth),
+    user: dict = Depends(require_operator),
 ):
     if not snri_client.token and not settings.snri_demo_mode:
         raise HTTPException(400, "Token SNRI no disponible. Autentíquese primero.")
@@ -251,7 +259,7 @@ async def crear_factura_detalle(
     input_data: FacturaDetalleInput,
     db: AsyncSession = Depends(get_db),
     request: Request = None,
-    user: dict = Depends(require_auth),
+    user: dict = Depends(require_operator),
 ):
     if not snri_client.token and not settings.snri_demo_mode:
         raise HTTPException(400, "Token SNRI no disponible. Autentíquese primero.")

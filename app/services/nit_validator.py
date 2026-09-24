@@ -90,6 +90,18 @@ def normalizar_nit_dv(nit: str, dv: Optional[str] = None) -> tuple[str, str]:
     if not nit_limpio:
         return "", dv_limpio
 
+    # NIT completo con DV embebido (típico LLM: "8001972684" + dv inventado)
+    if len(nit_limpio) >= 9 and validar_nit_completo(nit_limpio):
+        base = nit_limpio[:-1]
+        emb = nit_limpio[-1]
+        if len(base) >= 6:
+            if not dv_limpio or not validar_nit_completo(f"{base}{dv_limpio}"):
+                return base, emb
+            # ambos validan pero difieren → preferir el embebido (es parte del NIT)
+            if dv_limpio != emb:
+                return base, emb
+            return base, emb
+
     if dv_limpio and nit_limpio.endswith(dv_limpio) and len(nit_limpio) > len(dv_limpio):
         base = nit_limpio[: -len(dv_limpio)]
         if len(base) >= 6 and validar_nit_completo(f"{base}{dv_limpio}"):
@@ -101,6 +113,11 @@ def normalizar_nit_dv(nit: str, dv: Optional[str] = None) -> tuple[str, str]:
         dv_embebido = nit_limpio[-1]
         if validar_nit_completo(nit_limpio):
             return base, dv_embebido
+
+    # DV separado inválido pero el NIT con su último dígito sí valida
+    if dv_limpio and not validar_nit_completo(f"{nit_limpio}{dv_limpio}"):
+        if len(nit_limpio) >= 9 and validar_nit_completo(nit_limpio):
+            return nit_limpio[:-1], nit_limpio[-1]
 
     return nit_limpio, dv_limpio
 

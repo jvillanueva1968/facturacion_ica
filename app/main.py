@@ -2,15 +2,16 @@ import logging
 import structlog
 from contextlib import asynccontextmanager
 from pathlib import Path
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 from app.config import get_settings
 from app.api import upload, facturar, validate, catalogos
+from app.core.deps import require_auth, require_viewer
 from app.core.rate_limit import install_rate_limit, limiter
-from app.core.security import create_access_token
+from app.core.security import ROLE_ADMIN, ROLE_OPERATOR, ROLE_VIEWER, VALID_ROLES, create_access_token, normalize_roles
 from app.services.snri_client import SNRIClient
 from app.services.sigma_client import SigmaClient
 from app.db.session import init_db, engine
@@ -101,10 +102,38 @@ app.include_router(catalogos.router, prefix="/api/v1", tags=["catalogos"])
 
 @app.post("/api/v1/auth/jwt", tags=["auth"])
 @limiter.limit("10/minute")
-async def emitir_jwt(request: Request, subject: str = "operator"):
-    """Emite un JWT de la app (no confundir con token SNRI)."""
-    token = create_access_token(subject)
-    return {"access_token": token, "token_type": "bearer", "sub": subject}
+async def emitir_jwt(
+    request: Request,
+    subject: str = "operator",
+    roles: str = "operator",
+    user: dict = Depends(require_auth),
+):
+    """Emite JWT de la app con roles (viewer|operator|admin).
+
+    En producción el caller debe estar autenticado; para otorgar `admin`
+    el caller debe ser admin. En dev no exige token.
+    """
+    requested = [r.strip().lower() for r in roles.split(",") if r.strip()]
+    unknown = [r for r in requested if r not in VALID_ROLES]
+    if unknown:
+        raise HTTPException(400, f"Roles inválidos: {unknown}. Válidos: {sorted(VALID_ROLES)}")
+    role_list = normalize_roles(requested)
+
+    if ROLE_ADMIN in role_list and ROLE_ADMIN not in normalize_roles(user.get("roles")):
+        raise HTTPException(403, "Solo un admin puede otorgar rol admin")
+
+    token = create_access_token(subject, roles=role_list)
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "sub": subject,
+        "roles": role_list,
+    }
+
+
+@app.get("/api/v1/auth/me", tags=["auth"])
+async def auth_me(user: dict = Depends(require_viewer)):
+    return {"sub": user.get("sub"), "roles": user.get("roles", [])}
 
 if STATIC_DIR.is_dir():
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")

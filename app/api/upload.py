@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import Request
 
 from app.models.schemas import UploadResponse, DatosExtraidos, ComprobanteOut
-from app.core.deps import require_auth
+from app.core.deps import require_operator, require_viewer
 from app.core.rate_limit import limiter
 from app.services.ocr_service import OCRService
 from app.services.llm_service import LLMService
@@ -37,7 +37,7 @@ async def upload_comprobante(
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
     request: Request = None,
-    user: dict = Depends(require_auth),
+    user: dict = Depends(require_operator),
 ):
     if file.content_type not in settings.allowed_mimes:
         raise HTTPException(400, f"Tipo de archivo no permitido: {file.content_type}")

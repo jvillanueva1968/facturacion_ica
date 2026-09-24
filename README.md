@@ -234,19 +234,32 @@ docker-compose exec api env | grep SNRI
 
 ---
 
-## 11. Auth JWT (opcional en dev)
+## 11. Auth JWT + RBAC (opcional en dev)
+
+Roles: `viewer` (lectura) < `operator` (upload/facturar) < `admin`.
 
 ```bash
-# Emitir token de la app (no confundir con token SNRI)
-curl -X POST "http://localhost:8000/api/v1/auth/jwt?subject=operador"
-# → {"access_token":"...","token_type":"bearer"}
+# Emitir token con rol (no confundir con token SNRI)
+curl -X POST "http://localhost:8000/api/v1/auth/jwt?subject=operador&roles=operator"
+# → {"access_token":"...","roles":["operator"]}
 
-# Usar en headers cuando ENVIRONMENT=production y APP_SECRET_KEY esté seteado
+# Quién soy
+curl -H "Authorization: Bearer $TOKEN" http://localhost:8000/api/v1/auth/me
+
+# Usar en API
 curl -H "Authorization: Bearer $TOKEN" http://localhost:8000/api/v1/facturas
 ```
 
-En `ENVIRONMENT=development` el Bearer es opcional. En `production` es obligatorio
-en upload, facturación y validación NIT.
+| Endpoint | Rol mínimo |
+|----------|------------|
+| `GET /facturas`, catálogos, `POST /nit/validar*` | viewer |
+| `POST /upload`, `POST /facturar/*`, `POST /auth/token` (SNRI) | operator |
+| otorgar rol `admin` en `/auth/jwt` | admin |
+
+En `ENVIRONMENT=development` + sin `APP_SECRET_KEY`, el Bearer es opcional
+(el request se trata como `admin`). En `production` con `APP_SECRET_KEY` seteado,
+Bearer es obligatorio. El header se envía desde la UI si guardas el JWT en
+`localStorage` clave `ica_jwt`.
 
 Rate limiting (slowapi): 60/min global; upload 10/min; facturar 20/min; emisión JWT 10/min.
 

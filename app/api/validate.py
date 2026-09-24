@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel
 from typing import Optional
-from app.core.deps import require_auth
+from app.core.deps import require_viewer
 from app.core.rate_limit import limiter
 from app.services.nit_validator import (
     validar_nit_snri,
@@ -32,7 +32,7 @@ class NITValidateResponse(BaseModel):
 
 @router.post("/nit/validar", response_model=NITValidateResponse)
 @limiter.limit("60/minute")
-async def validar_nit(request: Request, body: NITValidateRequest, user: dict = Depends(require_auth)):
+async def validar_nit(request: Request, body: NITValidateRequest, user: dict = Depends(require_viewer)):
     nit_limpio, dv_limpio = normalizar_nit_dv(body.nit, body.dv)
 
     if not nit_limpio:
@@ -73,7 +73,7 @@ async def validar_nit(request: Request, body: NITValidateRequest, user: dict = D
 
 @router.post("/nit/validar-snri", response_model=NITValidateResponse)
 @limiter.limit("30/minute")
-async def validar_nit_con_snri(request: Request, body: NITValidateRequest, user: dict = Depends(require_auth)):
+async def validar_nit_con_snri(request: Request, body: NITValidateRequest, user: dict = Depends(require_viewer)):
     nit_limpio, dv_limpio = normalizar_nit_dv(body.nit, body.dv)
 
     if not nit_limpio:

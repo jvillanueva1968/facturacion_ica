@@ -7,7 +7,7 @@ Endpoint espejo de la API SIGMA real: `POST /api/facturas/registrar` con header 
 | Método | Ruta | Descripción |
 |--------|------|-------------|
 | GET | `/api/health` | Health check (sin token) |
-| POST | `/api/facturas/registrar` | Registrar factura (idempotente por `numero_referencia`) |
+| POST | `/api/facturas/registrar` o `/facturas/registrar` | Registrar factura (idempotente por `numero_referencia`) |
 | GET | `/api/facturas/consultar?numero_referencia=...` | Consultar por referencia |
 
 Header obligatorio (excepto health): `X-API-Token: dev-sigma-token`

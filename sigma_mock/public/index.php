@@ -16,6 +16,10 @@ $provided = $_SERVER['HTTP_X_API_TOKEN'] ?? '';
 
 $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) ?: '';
 $path = rtrim($path, '/');
+// Acepta /facturas/registrar y /api/facturas/registrar
+if ($path === '/facturas/registrar' || $path === '/facturas/consultar') {
+    $path = '/api' . $path;
+}
 
 function fail(int $code, string $msg): void {
     http_response_code($code);

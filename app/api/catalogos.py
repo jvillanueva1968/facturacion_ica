@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel
 from typing import Optional, List, Dict
+from app.core.deps import require_operator, require_viewer
 from app.services.snri_client import SNRIClient
 import structlog
 
@@ -18,7 +19,7 @@ class AuthRequest(BaseModel):
 
 
 @router.post("/auth/token")
-async def obtener_token(request: AuthRequest):
+async def obtener_token(request: AuthRequest, user: dict = Depends(require_operator)):
     from app.models.schemas import InicioTransaccionRequest
     auth_request = InicioTransaccionRequest(
         id_proyecto=request.id_proyecto,
@@ -34,7 +35,7 @@ async def obtener_token(request: AuthRequest):
 
 
 @router.get("/catalogos/formas-pago")
-async def get_formas_pago():
+async def get_formas_pago(user: dict = Depends(require_viewer)):
     if not snri_client.token:
         raise HTTPException(400, "Token no disponible. Autentíquese primero.")
     formas = snri_client._get_formas_pago()
@@ -42,7 +43,7 @@ async def get_formas_pago():
 
 
 @router.get("/catalogos/bancos")
-async def get_bancos():
+async def get_bancos(user: dict = Depends(require_viewer)):
     if not snri_client.token:
         raise HTTPException(400, "Token no disponible. Autentíquese primero.")
     bancos = snri_client._get_bancos()
@@ -50,7 +51,7 @@ async def get_bancos():
 
 
 @router.get("/catalogos/servicios")
-async def get_servicios():
+async def get_servicios(user: dict = Depends(require_viewer)):
     if not snri_client.token:
         raise HTTPException(400, "Token no disponible. Autentíquese primero.")
     servicios = snri_client._get_servicios()
@@ -58,7 +59,7 @@ async def get_servicios():
 
 
 @router.get("/catalogos/seccionales")
-async def get_seccionales():
+async def get_seccionales(user: dict = Depends(require_viewer)):
     if not snri_client.token:
         raise HTTPException(400, "Token no disponible. Autentíquese primero.")
     seccionales = snri_client._get_seccionales()
@@ -66,7 +67,7 @@ async def get_seccionales():
 
 
 @router.get("/catalogos/departamentos")
-async def get_departamentos():
+async def get_departamentos(user: dict = Depends(require_viewer)):
     if not snri_client.token:
         raise HTTPException(400, "Token no disponible. Autentíquese primero.")
     departamentos = snri_client._get_departamentos()
@@ -74,7 +75,7 @@ async def get_departamentos():
 
 
 @router.get("/catalogos/ciudades/{id_departamento}")
-async def get_ciudades(id_departamento: int):
+async def get_ciudades(id_departamento: int, user: dict = Depends(require_viewer)):
     if not snri_client.token:
         raise HTTPException(400, "Token no disponible. Autentíquese primero.")
     ciudades = snri_client._get_ciudades(id_departamento)
@@ -82,7 +83,7 @@ async def get_ciudades(id_departamento: int):
 
 
 @router.get("/catalogos/tipos-documento")
-async def get_tipos_documento():
+async def get_tipos_documento(user: dict = Depends(require_viewer)):
     if not snri_client.token:
         raise HTTPException(400, "Token no disponible. Autentíquese primero.")
     tipos = snri_client._get_tipos_documento()
@@ -90,7 +91,7 @@ async def get_tipos_documento():
 
 
 @router.get("/catalogos/tipos-persona")
-async def get_tipos_persona():
+async def get_tipos_persona(user: dict = Depends(require_viewer)):
     if not snri_client.token:
         raise HTTPException(400, "Token no disponible. Autentíquese primero.")
     tipos = snri_client._get_tipos_persona()
@@ -98,7 +99,7 @@ async def get_tipos_persona():
 
 
 @router.get("/catalogos/todos")
-async def get_todos_catalogos():
+async def get_todos_catalogos(user: dict = Depends(require_viewer)):
     if not snri_client.token:
         raise HTTPException(400, "Token no disponible. Autentíquese primero.")
     catalogos = snri_client.get_catalogos()

@@ -346,6 +346,7 @@ function app() {
     facturas: [],
     datos: null,
     pollTimer: null,
+    jwt: localStorage.getItem('ica_jwt') || '',
     form: {
       nit_pagador: '', dv_pagador: '', fecha_transaccion: '', valor_total: '',
       numero_referencia: '', banco: '', forma_pago: 'CONSIGNACION',
@@ -354,6 +355,10 @@ function app() {
       id_forma_pago: '1', id_banco: '1', id_servicio: '',
       id_departamento: '11', id_ciudad: '11001',
       direccion_principal: 'Calle 1 # 2-3', token: '', modo: 'auto',
+    },
+
+    authHeaders() {
+      return this.jwt ? { 'Authorization': 'Bearer ' + this.jwt } : {};
     },
 
     async init() {
@@ -391,7 +396,11 @@ function app() {
       try {
         const fd = new FormData();
         fd.append('file', file);
-        const r = await fetch('/api/v1/upload', { method: 'POST', body: fd });
+        const r = await fetch('/api/v1/upload', {
+          method: 'POST',
+          body: fd,
+          headers: this.authHeaders(),
+        });
         if (!r.ok) {
           const e = await r.json().catch(() => ({}));
           throw new Error(e.detail || r.statusText);
@@ -413,7 +422,7 @@ function app() {
       this.pollTimer = setInterval(async () => {
         if (!this.task_id) return;
         try {
-          const r = await fetch('/api/v1/status/' + this.task_id);
+          const r = await fetch('/api/v1/status/' + this.task_id, { headers: this.authHeaders() });
           if (!r.ok) return;
           const j = await r.json();
           this.status = j.status;
@@ -435,7 +444,7 @@ function app() {
 
     async loadComprobante() {
       try {
-        const r = await fetch('/api/v1/comprobantes/' + this.task_id);
+        const r = await fetch('/api/v1/comprobantes/' + this.task_id, { headers: this.authHeaders() });
         if (!r.ok) return;
         const j = await r.json();
         this.nitValidado = j.nit_validado;
@@ -524,7 +533,7 @@ function app() {
 
         const r = await fetch(url, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...this.authHeaders() },
           body: JSON.stringify(body),
         });
         const j = await r.json().catch(() => ({}));
@@ -555,7 +564,7 @@ function app() {
 
     async loadFacturas() {
       try {
-        const r = await fetch('/api/v1/facturas?limit=20');
+        const r = await fetch('/api/v1/facturas?limit=20', { headers: this.authHeaders() });
         if (!r.ok) return;
         this.facturas = await r.json();
       } catch { /* ignore */ }

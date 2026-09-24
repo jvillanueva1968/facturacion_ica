@@ -24,6 +24,8 @@ def test_normalizar_nit_sin_dv_embebido():
 def test_normalizar_nit_con_dv_embebido():
     assert normalizar_nit_dv("8001972684", "4") == ("800197268", "4")
     assert normalizar_nit_dv("8001972684", None) == ("800197268", "4")
+    # LLM inventa DV equivocado pero el NIT trae el DV correcto embebido
+    assert normalizar_nit_dv("8001972684", "1") == ("800197268", "4")
 
 
 def test_normalizar_nit_vacio():
