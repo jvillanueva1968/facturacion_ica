@@ -165,10 +165,6 @@
         <input x-model="form.dv_pagador" maxlength="2" autocomplete="off"
                placeholder="4" @keydown.enter.prevent="identificar()" />
       </label>
-      <label class="span2">Nombre / Razón social (opcional)
-        <input x-model="form.nombre_razon_social" autocomplete="organization"
-               placeholder="Empresa o tercero a facturar" />
-      </label>
     </div>
     <div class="msg err" x-show="error" x-text="error"></div>
     <div class="msg ok" x-show="nitValidado===true && nitMensaje"
@@ -192,7 +188,6 @@
     <h2>Cargar comprobante de pago</h2>
     <p class="muted" style="margin-top:0">
       Pagador: <strong x-text="(form.nit_pagador || '—') + (form.dv_pagador ? '-' + form.dv_pagador : '')"></strong>
-      <span x-show="form.nombre_razon_social"> · <span x-text="form.nombre_razon_social"></span></span>
     </p>
     <div class="drop"
          :class="{over: dragging}"
@@ -275,9 +270,6 @@
               <option>DATAFONO</option>
             </select>
           </label>
-          <label>Nombre / Razón social
-            <input x-model="form.nombre_razon_social" />
-          </label>
         </div>
 
         <h2 style="margin-top:1.25rem">Servicios</h2>
@@ -324,7 +316,6 @@
     <h2>Confirmar y facturar</h2>
     <div class="grid">
       <label>NIT-DV <input :value="form.nit_pagador + '-' + form.dv_pagador" readonly /></label>
-      <label>Beneficiario <input x-model="form.nombre_razon_social" /></label>
       <label>Referencia <input x-model="form.numero_referencia" readonly /></label>
       <label>Total <input x-model="form.valor_total" readonly /></label>
       <label>Token SNRI
@@ -692,9 +683,7 @@ function app() {
         this.form.id_servicio = d.servicios[0].codigo || '';
       }
       if (!this.form.nombre_razon_social) {
-        this.form.nombre_razon_social = d.numero_documento === d.nit_pagador
-          ? 'TERCERO ' + d.nit_pagador
-          : '';
+        this.form.nombre_razon_social = '';
       }
     },
 
