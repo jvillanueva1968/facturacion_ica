@@ -51,7 +51,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install \
             fastapi "uvicorn[standard]" pydantic pydantic-settings python-multipart \
-            aiofiles httpx pytesseract opencv-python-headless pillow pdf2image \
+            aiofiles httpx pytesseract opencv-python-headless pillow pdf2image pypdf \
             zeep requests-pkcs12 oracledb asyncpg "sqlalchemy[asyncio]" redis \
             structlog python-dotenv tenacity "python-jose[cryptography]" \
             "passlib[bcrypt]" slowapi greenlet \
