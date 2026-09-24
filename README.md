@@ -19,6 +19,7 @@ cp .env.example .env
 
 # Editar .env con tus valores reales:
 # - SNRI_CERT_PASSWORD=password_del_certificado
+# - SNRI_ID_PROYECTO / SNRI_USERNAME / SNRI_PASSWORD / SNRI_IP  (A_InicioTransaccion)
 # - SIGMA_API_TOKEN=token_php_sigma
 # - APP_SECRET_KEY=generar_con_openssl_rand_base64_32
 ```

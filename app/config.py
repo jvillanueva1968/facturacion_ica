@@ -29,6 +29,11 @@ class Settings(BaseSettings):
     snri_cert_password: str = Field(default="", exclude=True)
     snri_timeout: int = 30
     snri_demo_mode: bool = False
+    snri_id_proyecto: int = 0
+    snri_username: str = Field(default="", exclude=True)
+    snri_password: str = Field(default="", exclude=True)
+    snri_ip: str = Field(default="", exclude=True)
+    snri_proceso: str = Field(default="", exclude=True)
 
     dian_wsdl_url: str = "https://vpfe-hab.dian.gov.co/WcfDianCustomerServices.svc?wsdl"
 

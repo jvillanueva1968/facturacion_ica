@@ -83,6 +83,34 @@ class SNRIClient:
         session.verify = True
         return session
 
+    @staticmethod
+    def _field(obj: Any, name: str, default: Any = None) -> Any:
+        if obj is None:
+            return default
+        if isinstance(obj, dict):
+            return obj.get(name, default)
+        return getattr(obj, name, default)
+
+    @classmethod
+    def _collect_token_items(cls, response: Any) -> List[Any]:
+        if response is None:
+            return []
+        if isinstance(response, (list, tuple)):
+            return list(response)
+
+        container = cls._field(response, "A_InicioTransaccionResult")
+        if container is None:
+            container = response
+        else:
+            response = container
+
+        inner = cls._field(container, "Result")
+        if inner is None:
+            return [container]
+        if isinstance(inner, (list, tuple)):
+            return list(inner)
+        return [inner]
+
     async def obtener_token(self, request: InicioTransaccionRequest) -> TokenResponse:
         if not self.client:
             raise RuntimeError("Cliente SNRI no inicializado")
@@ -102,16 +130,31 @@ class SNRIClient:
             token = None
             success = False
             errores = []
+            items = self._collect_token_items(response)
 
-            if response and hasattr(response, 'Result') and response.Result:
-                for item in response.Result:
-                    if hasattr(item, 'Token') and item.Token:
-                        token = str(item.Token)
-                        success = True
-                        break
-                    if hasattr(item, 'Errores') and item.Errores:
-                        for err in item.Errores:
-                            errores.append({"codigo": getattr(err, 'Codigo', ''), "mensaje": getattr(err, 'Mensaje', '')})
+            for item in items:
+                item_token = self._field(item, "Token")
+                item_success = self._field(item, "Success")
+                if item_token:
+                    token = str(item_token)
+                    success = bool(item_success) if item_success is not None else True
+                    break
+                for err in self._field(item, "Errores") or self._field(item, "ListMensajeProyectoToken") or []:
+                    errores.append(
+                        {
+                            "codigo": self._field(err, "Codigo") or self._field(err, "Id") or "",
+                            "mensaje": self._field(err, "Mensaje") or str(err),
+                        }
+                    )
+                msg = self._field(item, "Mensaje")
+                if msg:
+                    errores.append({"codigo": self._field(item, "Id") or "", "mensaje": str(msg)})
+
+            if not token and not errores:
+                token = self._field(response, "Token")
+                if token:
+                    token = str(token)
+                    success = bool(self._field(response, "Success") or True)
 
             self._token = token
             logger.info(f"Token obtenido: {'OK' if success else 'FAIL'}")

@@ -1,6 +1,41 @@
 import pytest
 from zeep import Client
 
+from app.services.snri_client import SNRIClient
+
+
+def test_collect_token_items_list():
+    items = SNRIClient._collect_token_items(
+        [{"Result": None, "Success": True, "Token": "abc123"}]
+    )
+    assert len(items) == 1
+    assert SNRIClient._field(items[0], "Token") == "abc123"
+
+
+def test_collect_token_items_nested():
+    class Obj:
+        pass
+
+    inner = Obj()
+    inner.Token = "xyz"
+    inner.Success = True
+    container = Obj()
+    container.Result = [inner]
+    root = Obj()
+    root.A_InicioTransaccionResult = container
+    items = SNRIClient._collect_token_items(root)
+    assert len(items) == 1
+    assert SNRIClient._field(items[0], "Token") == "xyz"
+    assert SNRIClient._field(items[0], "Success") is True
+
+
+def test_field_dict_and_obj():
+    assert SNRIClient._field({"Token": "a"}, "Token") == "a"
+    o = type("X", (), {"Token": "b"})()
+    assert SNRIClient._field(o, "Token") == "b"
+    assert SNRIClient._field(None, "Token") is None
+    assert SNRIClient._field({}, "Missing", "d") == "d"
+
 
 def test_wsdl_loads():
     client = Client("wsdl/WS_FACTURACION.wsdl")
