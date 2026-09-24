@@ -270,25 +270,44 @@
               <option>DATAFONO</option>
             </select>
           </label>
-          <label>Tipo de persona
-            <select x-model="form.id_tipo_persona" @change="syncNombreTipoPersona()">
-              <option value="1">1 — Natural (nombres/apellidos)</option>
-              <option value="2">2 — Jurídica (razón social)</option>
-            </select>
-          </label>
-          <template x-if="String(form.id_tipo_persona) === '2'">
-            <label class="span2">Razón social
-              <input x-model="form.nombre_razon_social" placeholder="EMPRESA SAS" />
+        </div>
+
+        <div class="msg info" style="margin-top:0.75rem" x-show="terceroSnri">
+          <strong>Tercero SNRI (solo lectura)</strong>
+          <div class="grid" style="margin-top:0.5rem">
+            <label>Tipo persona
+              <input :value="String(form.id_tipo_persona)==='2' ? '2 — Jurídica (razón social)' : '1 — Natural (nombres/apellidos)'"
+                     readonly />
             </label>
-          </template>
-          <template x-if="String(form.id_tipo_persona) !== '2'">
-            <div class="span2 grid">
-              <label>Primer nombre <input x-model="form.primer_nombre" /></label>
-              <label>Segundo nombre <input x-model="form.segundo_nombre" /></label>
-              <label>Primer apellido <input x-model="form.primer_apellido" /></label>
-              <label>Segundo apellido <input x-model="form.segundo_apellido" /></label>
-            </div>
-          </template>
+            <template x-if="String(form.id_tipo_persona) === '2'">
+              <label>Razón social
+                <input :value="form.nombre_razon_social" readonly />
+              </label>
+            </template>
+            <template x-if="String(form.id_tipo_persona) !== '2'">
+              <label>Nombre completo
+                <input :value="nombreCompuesto() || form.nombre_razon_social" readonly />
+              </label>
+            </template>
+            <template x-if="String(form.id_tipo_persona) !== '2'">
+              <div class="span2 grid">
+                <label>Primer nombre <input :value="form.primer_nombre" readonly /></label>
+                <label>Segundo nombre <input :value="form.segundo_nombre" readonly /></label>
+                <label>Primer apellido <input :value="form.primer_apellido" readonly /></label>
+                <label>Segundo apellido <input :value="form.segundo_apellido" readonly /></label>
+              </div>
+            </template>
+            <label>Id tercero SNRI
+              <input :value="terceroSnri?.id_tercero ?? '—'" readonly />
+            </label>
+            <label>Régimen
+              <input :value="(terceroSnri?.regimen_simplificado ? 'Simplificado' : '') + (terceroSnri?.regimen_comun ? ' Común' : '') || '—'"
+                     readonly />
+            </label>
+          </div>
+          <p class="muted" style="margin:0.5rem 0 0">
+            Datos obtenidos de la consulta SNRI; no se digitan.
+          </p>
         </div>
 
         <h2 style="margin-top:1.25rem">Servicios</h2>
@@ -433,6 +452,7 @@ function app() {
     confianzaOcr: null,
     textoOcr: '',
     paginas: null,
+    terceroSnri: null,
     jwt: localStorage.getItem('ica_jwt') || '',
     form: {
       nit_pagador: '', dv_pagador: '', fecha_transaccion: '', valor_total: '',
@@ -455,22 +475,32 @@ function app() {
         .map(s => (s || '').trim()).filter(Boolean).join(' ');
     },
 
-    syncNombreTipoPersona() {
-      if (String(this.form.id_tipo_persona) === '2') {
-        if (!this.form.nombre_razon_social && this.nombreCompuesto()) {
-          this.form.nombre_razon_social = this.nombreCompuesto();
-        }
-      } else if (!this.nombreCompuesto() && this.form.nombre_razon_social) {
-        const tok = this.form.nombre_razon_social.split(/\s+/).filter(Boolean);
-        if (tok.length >= 1) this.form.primer_nombre = tok[0] || '';
-        if (tok.length >= 3) {
-          this.form.segundo_nombre = '';
-          this.form.primer_apellido = tok[1] || '';
-          this.form.segundo_apellido = tok.slice(2).join(' ');
-        } else if (tok.length === 2) {
-          this.form.primer_apellido = tok[1] || '';
+    aplicarTerceroSnri(datos) {
+      if (!datos) {
+        this.terceroSnri = null;
+        return;
+      }
+      this.terceroSnri = datos;
+      const tipo = Number(datos.id_tipo_persona) || 1;
+      this.form.id_tipo_persona = String(tipo);
+      if (tipo === 2) {
+        this.form.nombre_razon_social = datos.nombre_razon_social || '';
+        this.form.primer_nombre = '';
+        this.form.segundo_nombre = '';
+        this.form.primer_apellido = '';
+        this.form.segundo_apellido = '';
+      } else {
+        this.form.primer_nombre = datos.primer_nombre || '';
+        this.form.segundo_nombre = datos.segundo_nombre || '';
+        this.form.primer_apellido = datos.primer_apellido || '';
+        this.form.segundo_apellido = datos.segundo_apellido || '';
+        if (!this.nombreCompuesto() && datos.nombre_razon_social) {
+          this.form.nombre_razon_social = datos.nombre_razon_social;
         }
       }
+      if (datos.id_departamento) this.form.id_departamento = String(datos.id_departamento);
+      if (datos.id_ciudad) this.form.id_ciudad = String(datos.id_ciudad);
+      if (datos.direccion_principal) this.form.direccion_principal = datos.direccion_principal;
     },
 
     authHeaders() {
@@ -502,14 +532,36 @@ function app() {
         this.nitMensaje = j.mensaje || '';
         if (j.nit) this.form.nit_pagador = j.nit;
         if (j.dv_calculado && !this.form.dv_pagador) this.form.dv_pagador = j.dv_calculado;
+        if (this.nitValidado) {
+          await this.consultarTerceroSnri();
+        } else {
+          this.terceroSnri = null;
+        }
         return this.nitValidado;
       } catch (err) {
         this.nitValidado = false;
         this.nitMensaje = err.message || String(err);
+        this.terceroSnri = null;
         return false;
       } finally {
         this.validandoNit = false;
       }
+    },
+
+    async consultarTerceroSnri() {
+      try {
+        const r = await fetch('/api/v1/nit/validar-snri', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...this.authHeaders() },
+          body: JSON.stringify({ nit: this.nitSolo(), dv: this.form.dv_pagador || null }),
+        });
+        if (!r.ok) return;
+        const j = await r.json().catch(() => ({}));
+        if (j.datos_snri) {
+          this.aplicarTerceroSnri(j.datos_snri);
+          if (j.mensaje) this.nitMensaje = j.mensaje;
+        }
+      } catch { /* SNRI opcional en step 1 */ }
     },
 
     async identificar() {
@@ -731,15 +783,16 @@ function app() {
         this.form.id_servicio = d.servicios[0].codigo || '';
       }
       if (d.tipo_documento) this.form.tipo_documento = d.tipo_documento;
-      // tipo persona / nombres solo si el usuario no los puso a mano
-      if (!this.form.nombre_razon_social && !this.nombreCompuesto()) {
-        if (d.primer_nombre || d.primer_apellido) {
-          this.form.id_tipo_persona = '1';
-          this.form.primer_nombre = d.primer_nombre || '';
-          this.form.segundo_nombre = d.segundo_nombre || '';
-          this.form.primer_apellido = d.primer_apellido || '';
-          this.form.segundo_apellido = d.segundo_apellido || '';
-        }
+      // nombres solo desde SNRI; si no hay consulta, no autocompletar desde OCR
+      if (this.terceroSnri) {
+        this.aplicarTerceroSnri(this.terceroSnri);
+      } else {
+        this.form.nombre_razon_social = '';
+        this.form.id_tipo_persona = '1';
+        this.form.primer_nombre = '';
+        this.form.segundo_nombre = '';
+        this.form.primer_apellido = '';
+        this.form.segundo_apellido = '';
       }
     },
 
@@ -886,6 +939,7 @@ function app() {
       this.confianzaOcr = null;
       this.textoOcr = '';
       this.paginas = null;
+      this.terceroSnri = null;
       this.nitValidado = null;
       this.nitMensaje = null;
       this.facturaResult = null;

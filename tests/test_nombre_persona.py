@@ -92,3 +92,10 @@ def test_ui_expone_tipo_persona_y_nombres():
     assert "segundo_apellido" in html
     assert "Razón social" in html
     assert "nombreCompuesto" in html
+    assert "terceroSnri" in html
+    assert "consultarTerceroSnri" in html
+    assert 'x-model="form.primer_nombre"' not in html
+    assert 'x-model="form.nombre_razon_social"' not in html
+    assert 'x-model="form.id_tipo_persona"' not in html
+    assert 'readonly' in html
+    assert "solo lectura" in html.lower() or "solo lectura" in html
