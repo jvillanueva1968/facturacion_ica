@@ -8,6 +8,7 @@ from requests_pkcs12 import Pkcs12Adapter
 from pathlib import Path
 import ssl
 import logging
+from decimal import Decimal
 from typing import Optional, List, Dict, Any
 from app.config import get_settings
 from app.models.schemas import (
@@ -47,6 +48,7 @@ class SNRIClient:
         self.client: Optional[Client] = None
         self.history = HistoryPlugin()
         self._token: Optional[str] = None
+        self._ciudades_cache: Optional[List[SNRICiudad]] = None
         self._initialized = True
         self._initialize_client()
 
@@ -186,18 +188,38 @@ class SNRIClient:
     def token(self, value: str):
         self._token = value
 
+    @classmethod
+    def _consultas_items(cls, response: Any) -> List[Any]:
+        """ResultadoConsultasE -> Result(ArrayOfConsultasE) -> ConsultasE[]"""
+        if response is None:
+            return []
+        result = cls._field(response, "Result")
+        if result is None:
+            return []
+        inner = cls._field(result, "ConsultasE")
+        if isinstance(inner, (list, tuple)):
+            return list(inner)
+        if inner is not None:
+            return [inner]
+        if isinstance(result, (list, tuple)):
+            return list(result)
+        return [result]
+
+    @classmethod
+    def _errores_from_response(cls, response: Any) -> List[dict]:
+        return cls._extraer_errores_snri(response)
+
     def _get_formas_pago(self) -> List[SNRIFormaPago]:
         if not self.client or not self._token:
             raise RuntimeError("Cliente o token no inicializado")
 
         response = self.client.service.R_ConsultaFormasPago(token=self._token)
         formas = []
-        if response and hasattr(response, 'Result') and response.Result:
-            for item in response.Result:
-                formas.append(SNRIFormaPago(
-                    id_forma_pago=str(getattr(item, 'IdFormaPago', '')),
-                    descripcion=str(getattr(item, 'Descripcion', ''))
-                ))
+        for item in self._consultas_items(response):
+            formas.append(SNRIFormaPago(
+                id_forma_pago=str(self._field(item, "Id") or self._field(item, "IdFormaPago") or ""),
+                descripcion=str(self._field(item, "Nombre") or self._field(item, "Descripcion") or "")
+            ))
         return formas
 
     def _get_bancos(self) -> List[SNRIBanco]:
@@ -206,12 +228,11 @@ class SNRIClient:
 
         response = self.client.service.B_ConsultaBancos(token=self._token)
         bancos = []
-        if response and hasattr(response, 'Result') and response.Result:
-            for item in response.Result:
-                bancos.append(SNRIBanco(
-                    id_banco=str(getattr(item, 'IdBanco', '')),
-                    nombre=str(getattr(item, 'Nombre', ''))
-                ))
+        for item in self._consultas_items(response):
+            bancos.append(SNRIBanco(
+                id_banco=str(self._field(item, "Id") or self._field(item, "IdBanco") or ""),
+                nombre=str(self._field(item, "Nombre") or "")
+            ))
         return bancos
 
     def _get_servicios(self) -> List[SNRIServicio]:
@@ -220,14 +241,14 @@ class SNRIClient:
 
         response = self.client.service.D_ConsultaServicio(token=self._token)
         servicios = []
-        if response and hasattr(response, 'Result') and response.Result:
-            for item in response.Result:
-                servicios.append(SNRIServicio(
-                    id_servicio=str(getattr(item, 'IdServicio', '')),
-                    codigo=str(getattr(item, 'Codigo', '')),
-                    descripcion=str(getattr(item, 'Descripcion', '')),
-                    valor=str(getattr(item, 'Valor', '')) if hasattr(item, 'Valor') else None
-                ))
+        for item in self._consultas_items(response):
+            valor = self._field(item, "VALOR", self._field(item, "Valor"))
+            servicios.append(SNRIServicio(
+                id_servicio=str(self._field(item, "Id") or ""),
+                codigo=str(self._field(item, "CODIGO_SERVICIO") or self._field(item, "Codigo") or self._field(item, "Id") or ""),
+                descripcion=str(self._field(item, "Nombre") or self._field(item, "Descripcion") or ""),
+                valor=str(valor) if valor is not None else None,
+            ))
         return servicios
 
     def _get_seccionales(self) -> List[SNRISeccional]:
@@ -236,42 +257,83 @@ class SNRIClient:
 
         response = self.client.service.C_ConsultaSeccional(token=self._token)
         seccionales = []
-        if response and hasattr(response, 'Result') and response.Result:
-            for item in response.Result:
-                seccionales.append(SNRISeccional(
-                    id_seccional=str(getattr(item, 'IdSeccional', '')),
-                    nombre=str(getattr(item, 'Nombre', ''))
-                ))
+        for item in self._consultas_items(response):
+            seccionales.append(SNRISeccional(
+                id_seccional=str(self._field(item, "Id") or self._field(item, "IdSeccional") or ""),
+                nombre=str(self._field(item, "Nombre") or "")
+            ))
         return seccionales
+
+    # Códigos DANE de los 33 departamentos colombianos (I_ConsultaDepartamentos no lista con 0)
+    _DANE_DEPTOS = (
+        5, 8, 11, 13, 15, 17, 18, 19, 20, 23, 25, 27, 41, 44, 47,
+        50, 52, 54, 63, 66, 68, 70, 73, 76, 81, 85, 86, 88, 91, 94, 95, 97, 99,
+    )
+    # IdDepartamento SNRI observados para Colombia (J1 id_pais=0 + DANE lookups)
+    _CO_ID_DEPTOS = frozenset({
+        1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+        21, 22, 23, 24, 25, 26, 28, 29, 30, 31, 32, 33, 37, 38,
+    })
 
     def _get_departamentos(self) -> List[SNRIDepartamento]:
         if not self.client or not self._token:
             raise RuntimeError("Cliente o token no inicializado")
 
-        response = self.client.service.I_ConsultaDepartamentos(token=self._token, codigoDane=0)
-        departamentos = []
-        if response and hasattr(response, 'Result') and response.Result:
-            for item in response.Result:
-                departamentos.append(SNRIDepartamento(
-                    id_departamento=int(getattr(item, 'IdDepartamento', 0)),
-                    nombre=str(getattr(item, 'Nombre', ''))
-                ))
-        return departamentos
+        departamentos: Dict[int, SNRIDepartamento] = {}
+        for dane in self._DANE_DEPTOS:
+            try:
+                response = self.client.service.I_ConsultaDepartamentos(
+                    token=self._token, codigoDane=dane
+                )
+            except Exception as e:
+                logger.warning(f"I_ConsultaDepartamentos({dane}) falló: {e}")
+                continue
+            for item in self._consultas_items(response):
+                id_dpto = self._int_or_none(
+                    self._field(item, "Id")
+                    or self._field(item, "ID_DEPARTAMENTO")
+                    or self._field(item, "IdDepartamento")
+                )
+                nombre = str(self._field(item, "Nombre") or self._field(item, "DEPARTAMENTO") or "")
+                if id_dpto is None or not nombre:
+                    continue
+                departamentos[id_dpto] = SNRIDepartamento(
+                    id_departamento=id_dpto, nombre=nombre
+                )
+        return sorted(departamentos.values(), key=lambda d: d.nombre)
 
-    def _get_ciudades(self, id_departamento: int) -> List[SNRICiudad]:
+    def _ciudades_all_co(self) -> List[SNRICiudad]:
+        """J1_ConsultaCiudades_pais(id_pais=0) devuelve el catálogo global; filtramos Colombia."""
         if not self.client or not self._token:
             raise RuntimeError("Cliente o token no inicializado")
 
-        response = self.client.service.J_ConsultaCiudades(token=self._token, codigoDane=id_departamento)
-        ciudades = []
-        if response and hasattr(response, 'Result') and response.Result:
-            for item in response.Result:
-                ciudades.append(SNRICiudad(
-                    id_ciudad=int(getattr(item, 'IdCiudad', 0)),
-                    nombre=str(getattr(item, 'Nombre', '')),
-                    id_departamento=id_departamento
-                ))
+        if getattr(self, "_ciudades_cache", None) is not None:
+            return self._ciudades_cache
+
+        response = self.client.service.J1_ConsultaCiudades_pais(
+            token=self._token, id_pais=0
+        )
+        ciudades: List[SNRICiudad] = []
+        for item in self._consultas_items(response):
+            id_dpto = self._int_or_none(self._field(item, "IdDepartamento"))
+            id_ciudad = self._int_or_none(
+                self._field(item, "Id") or self._field(item, "ID_CIUDAD")
+            )
+            if id_ciudad is None or id_dpto not in self._CO_ID_DEPTOS:
+                continue
+            ciudades.append(SNRICiudad(
+                id_ciudad=id_ciudad,
+                nombre=str(self._field(item, "Nombre") or "").strip(),
+                id_departamento=id_dpto,
+            ))
+        self._ciudades_cache = ciudades
         return ciudades
+
+    def _get_ciudades(self, id_departamento: int) -> List[SNRICiudad]:
+        return [
+            c for c in self._ciudades_all_co()
+            if c.id_departamento == id_departamento
+        ]
 
     def _get_tipos_documento(self) -> List[SNRITipoDocumento]:
         if not self.client or not self._token:
@@ -279,12 +341,14 @@ class SNRIClient:
 
         response = self.client.service.H_ConsultaTipoDocumentos(token=self._token)
         tipos = []
-        if response and hasattr(response, 'Result') and response.Result:
-            for item in response.Result:
-                tipos.append(SNRITipoDocumento(
-                    id_tipo_documento=int(getattr(item, 'IdTipoDocumento', 0)),
-                    descripcion=str(getattr(item, 'Descripcion', ''))
-                ))
+        for item in self._consultas_items(response):
+            id_td = self._int_or_none(self._field(item, "Id") or self._field(item, "IdTipoDocumento"))
+            if id_td is None:
+                continue
+            tipos.append(SNRITipoDocumento(
+                id_tipo_documento=id_td,
+                descripcion=str(self._field(item, "Nombre") or self._field(item, "Descripcion") or "")
+            ))
         return tipos
 
     def _get_tipos_persona(self) -> List[SNRITipoPersona]:
@@ -293,12 +357,14 @@ class SNRIClient:
 
         response = self.client.service.L_ConsultaTiposPersona(token=self._token)
         tipos = []
-        if response and hasattr(response, 'Result') and response.Result:
-            for item in response.Result:
-                tipos.append(SNRITipoPersona(
-                    id_tipo_persona=int(getattr(item, 'IdTipoPersona', 0)),
-                    descripcion=str(getattr(item, 'Descripcion', ''))
-                ))
+        for item in self._consultas_items(response):
+            id_tp = self._int_or_none(self._field(item, "Id") or self._field(item, "IdTipoPersona"))
+            if id_tp is None:
+                continue
+            tipos.append(SNRITipoPersona(
+                id_tipo_persona=id_tp,
+                descripcion=str(self._field(item, "Nombre") or self._field(item, "Descripcion") or "")
+            ))
         return tipos
 
     async def consultar_tercero(self, nro_identificacion: str) -> TerceroResponse:
@@ -453,43 +519,35 @@ class SNRIClient:
             logger.error(f"Error creando tercero: {e}")
             return TerceroResponse(success=False, errores=[{"codigo": "EXCEPTION", "mensaje": str(e)}])
 
+    def _factura_kwargs_base(self, request: SNRIFacturaSimpleRequest | SNRIFacturaDetalleRequest) -> Dict[str, Any]:
+        """Mapea request interno → parámetros reales del WSDL M_CrearFactura / Alterna."""
+        return {
+            "token": request.token,
+            "codigoServicios": int(request.id_servicio) if request.id_servicio and str(request.id_servicio).isdigit() else int(request.detalles[0].id_servicio) if getattr(request, "detalles", None) else 0,
+            "idSeccional": int(request.id_seccional),
+            "idTercero": int(request.id_tercero),
+            "idFormaPago": int(request.id_forma_pago),
+            "cantidad": int(request.cantidad) if getattr(request, "cantidad", None) else (
+                sum(int(d.cantidad) for d in request.detalles) if getattr(request, "detalles", None) else 1
+            ),
+            "valor": request.valor if getattr(request, "valor", None) else (
+                str(sum(Decimal(d.valor) * int(d.cantidad) for d in request.detalles)) if getattr(request, "detalles", None) else "0"
+            ),
+            "valorTotal": request.valor_total if getattr(request, "valor_total", None) else (
+                str(sum(Decimal(d.valor_total) for d in request.detalles)) if getattr(request, "detalles", None) else "0"
+            ),
+            "IdBanco": str(request.id_banco or ""),
+            "NumConsignacion": str(request.numero_consignacion or ""),
+        }
+
     async def crear_factura_simple(self, request: SNRIFacturaSimpleRequest) -> SNRIFacturaResponse:
         if not self.client or not self._token:
             raise RuntimeError("Cliente o token no inicializado")
 
         try:
             logger.info(f"Creando factura simple para NIT {request.nro_identificacion}")
-            response = self.client.service.M_CrearFactura(
-                token=request.token,
-                idProyecto=request.id_proyecto,
-                idSeccional=request.id_seccional,
-                idEntidad=request.id_entidad,
-                idTercero=request.id_tercero,
-                idTipoDocumento=request.id_tipo_documento,
-                idTipoPersona=request.id_tipo_persona,
-                granContribuyente=request.gran_contribuyente,
-                autorretenedor=request.autorretenedor,
-                regimenComun=request.regimen_comun,
-                regimenSimplificado=request.regimen_simplificado,
-                nroIdentificacion=request.nro_identificacion,
-                nombreRazonSocial=request.nombre_razon_social,
-                idDepartamento=request.id_departamento,
-                idCiudad=request.id_ciudad,
-                direccionPrincipal=request.direccion_principal,
-                telefono=request.telefono or "",
-                email=request.email or "",
-                idFormaPago=request.id_forma_pago,
-                idBanco=request.id_banco,
-                numeroConsignacion=request.numero_consignacion,
-                fechaConsignacion=request.fecha_consignacion,
-                idServicio=request.id_servicio,
-                valor=request.valor,
-                cantidad=request.cantidad,
-                valorTotal=request.valor_total,
-                observaciones=request.observaciones or "",
-                ticketId=request.ticket_id or ""
-            )
-
+            kwargs = self._factura_kwargs_base(request)
+            response = self.client.service.M_CrearFactura(**kwargs)
             return self._parse_factura_response(response)
 
         except Exception as e:
@@ -507,39 +565,16 @@ class SNRIClient:
             detalles = []
             for d in request.detalles:
                 detalles.append({
-                    'idServicio': d.id_servicio,
-                    'valor': d.valor,
-                    'cantidad': d.cantidad,
-                    'valorTotal': d.valor_total
+                    "IdCodigoServicio": int(d.id_servicio),
+                    "ValorTarifa": Decimal(str(d.valor)),
+                    "Cantidad": int(d.cantidad),
+                    "ValorTotal": Decimal(str(d.valor_total)),
                 })
 
-            response = self.client.service.M_CrearFacturaAlterna(
-                token=request.token,
-                idProyecto=request.id_proyecto,
-                idSeccional=request.id_seccional,
-                idEntidad=request.id_entidad,
-                idTercero=request.id_tercero,
-                idTipoDocumento=request.id_tipo_documento,
-                idTipoPersona=request.id_tipo_persona,
-                granContribuyente=request.gran_contribuyente,
-                autorretenedor=request.autorretenedor,
-                regimenComun=request.regimen_comun,
-                regimenSimplificado=request.regimen_simplificado,
-                nroIdentificacion=request.nro_identificacion,
-                nombreRazonSocial=request.nombre_razon_social,
-                idDepartamento=request.id_departamento,
-                idCiudad=request.id_ciudad,
-                direccionPrincipal=request.direccion_principal,
-                telefono=request.telefono or "",
-                email=request.email or "",
-                idFormaPago=request.id_forma_pago,
-                idBanco=request.id_banco,
-                numeroConsignacion=request.numero_consignacion,
-                fechaConsignacion=request.fecha_consignacion,
-                observaciones=request.observaciones or "",
-                Detalles={'FacturaDetalle': detalles}
-            )
-
+            kwargs = self._factura_kwargs_base(request)
+            # WSDL: Detalles es ArrayOfFacturaDetalleE con hijo FacturaDetalleE
+            kwargs["Detalles"] = {"FacturaDetalleE": detalles}
+            response = self.client.service.M_CrearFacturaAlterna(**kwargs)
             return self._parse_factura_response(response)
 
         except Exception as e:
@@ -548,30 +583,33 @@ class SNRIClient:
             return SNRIFacturaResponse(success=False, errores=[{"codigo": "EXCEPTION", "mensaje": str(e)}])
 
     def _parse_factura_response(self, response: Any) -> SNRIFacturaResponse:
-        if not response or not hasattr(response, 'Result') or not response.Result:
-            errores = []
-            if response and hasattr(response, 'Errores') and response.Errores:
-                for err in response.Errores:
-                    errores.append({"codigo": getattr(err, 'Codigo', ''), "mensaje": getattr(err, 'Mensaje', '')})
-            return SNRIFacturaResponse(success=False, errores=errores)
+        """ResultadoProyectoFacturacionE: Success, NumeroFra, Result(FacturaVenta), Errores."""
+        if response is None:
+            return SNRIFacturaResponse(success=False, errores=[{"codigo": "NO_RESPONSE", "mensaje": "Respuesta vacía"}])
 
-        item = response.Result
-        success = getattr(item, 'Success', False)
+        success = bool(self._field(response, "Success"))
+        numero = self._field(response, "NumeroFra")
+        result = self._field(response, "Result")
+        if result is not None and not numero:
+            numero = self._field(result, "Nrofactura") or self._field(result, "NumeroFactura")
+        id_factura = None
+        cufe = None
+        if result is not None:
+            id_factura = self._field(result, "IdFactura")
+            cufe = self._field(result, "CUFE") or self._field(result, "CodigoBarras")
 
-        if success:
+        errores = self._extraer_errores_snri(response)
+        if success or numero:
             return SNRIFacturaResponse(
-                numero_factura=str(getattr(item, 'NumeroFactura', '')),
-                id_factura=str(getattr(item, 'IdFactura', '')),
-                cufe=str(getattr(item, 'CUFE', '')) if hasattr(item, 'CUFE') else None,
+                numero_factura=str(numero or ""),
+                id_factura=str(id_factura) if id_factura is not None else None,
+                cufe=str(cufe) if cufe else None,
                 success=True,
-                errores=[]
+                errores=[],
             )
-        else:
-            errores = []
-            if hasattr(item, 'Errores') and item.Errores:
-                for err in item.Errores:
-                    errores.append({"codigo": getattr(err, 'Codigo', ''), "mensaje": getattr(err, 'Mensaje', '')})
-            return SNRIFacturaResponse(success=False, errores=errores)
+        if not errores:
+            errores = [{"codigo": "SNRI_FAIL", "mensaje": "SNRI no confirmó la factura"}]
+        return SNRIFacturaResponse(success=False, errores=errores)
 
     async def imprimir_factura(self, nro_factura: str) -> FacturaImpresaResponse:
         if not self.client or not self._token:

@@ -198,12 +198,20 @@ async def crear_factura_simple(
             errores=[],
         )
     else:
+        # WSDL M_CrearFactura exige idTercero numérico (Id en SNRI), no el NIT
+        tercero = await snri_client.consultar_tercero(input_data.nit_pagador)
+        if not tercero.success or not tercero.id_tercero:
+            raise HTTPException(
+                400,
+                "Tercero no existe en SNRI; no se puede facturar. "
+                f"Detalle: {tercero.errores}",
+            )
         request = SNRIFacturaSimpleRequest(
             token=snri_client.token,
             id_proyecto=input_data.id_proyecto,
             id_seccional=input_data.id_seccional,
             id_entidad=input_data.id_entidad,
-            id_tercero=input_data.nit_pagador,
+            id_tercero=str(tercero.id_tercero),
             id_tipo_documento=input_data.id_tipo_documento,
             id_tipo_persona=input_data.id_tipo_persona,
             gran_contribuyente=input_data.gran_contribuyente,
@@ -211,7 +219,7 @@ async def crear_factura_simple(
             regimen_comun=input_data.regimen_comun,
             regimen_simplificado=input_data.regimen_simplificado,
             nro_identificacion=f"{input_data.nit_pagador}-{input_data.dv_pagador}",
-            nombre_razon_social=input_data.nombre_razon_social,
+            nombre_razon_social=tercero.nombre_razon_social or input_data.nombre_razon_social,
             id_departamento=input_data.id_departamento,
             id_ciudad=input_data.id_ciudad,
             direccion_principal=input_data.direccion_principal,
@@ -344,12 +352,19 @@ async def crear_factura_detalle(
             errores=[],
         )
     else:
+        tercero = await snri_client.consultar_tercero(input_data.nit_pagador)
+        if not tercero.success or not tercero.id_tercero:
+            raise HTTPException(
+                400,
+                "Tercero no existe en SNRI; no se puede facturar. "
+                f"Detalle: {tercero.errores}",
+            )
         request = SNRIFacturaDetalleRequest(
             token=snri_client.token,
             id_proyecto=input_data.id_proyecto,
             id_seccional=input_data.id_seccional,
             id_entidad=input_data.id_entidad,
-            id_tercero=input_data.nit_pagador,
+            id_tercero=str(tercero.id_tercero),
             id_tipo_documento=input_data.id_tipo_documento,
             id_tipo_persona=input_data.id_tipo_persona,
             gran_contribuyente=input_data.gran_contribuyente,
@@ -357,7 +372,7 @@ async def crear_factura_detalle(
             regimen_comun=input_data.regimen_comun,
             regimen_simplificado=input_data.regimen_simplificado,
             nro_identificacion=f"{input_data.nit_pagador}-{input_data.dv_pagador}",
-            nombre_razon_social=input_data.nombre_razon_social,
+            nombre_razon_social=tercero.nombre_razon_social or input_data.nombre_razon_social,
             id_departamento=input_data.id_departamento,
             id_ciudad=input_data.id_ciudad,
             direccion_principal=input_data.direccion_principal,
