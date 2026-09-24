@@ -34,11 +34,25 @@ settings = get_settings()
 
 
 class SNRIClient:
+    _instance: Optional["SNRIClient"] = None
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+
     def __init__(self):
+        if getattr(self, "_initialized", False):
+            return
         self.client: Optional[Client] = None
         self.history = HistoryPlugin()
         self._token: Optional[str] = None
+        self._initialized = True
         self._initialize_client()
+
+    @classmethod
+    def reset_singleton(cls) -> None:
+        cls._instance = None
 
     def _initialize_client(self):
         session = self._create_session_with_cert()
@@ -292,42 +306,104 @@ class SNRIClient:
             raise RuntimeError("Cliente o token no inicializado")
 
         try:
+            # SNRI espera solo el número de documento, sin DV ni guion
+            documento = "".join(filter(str.isdigit, nro_identificacion or ""))
+            if not documento:
+                return TerceroResponse(success=False, errores=[{"codigo": "EMPTY", "mensaje": "Documento vacío"}])
+
             response = self.client.service.E_ConsultaTercero(
                 token=self._token,
-                nroIdentificacion=nro_identificacion
+                documento=documento
             )
 
-            if response and hasattr(response, 'Result') and response.Result:
-                item = response.Result
-                return TerceroResponse(
-                    id_tercero=int(getattr(item, 'IdTercero', 0)) if getattr(item, 'IdTercero', None) else None,
-                    nro_identificacion=str(getattr(item, 'NroIdentificacion', '')),
-                    nombre_razon_social=str(getattr(item, 'NombreRazonSocial', '')),
-                    id_tipo_documento=int(getattr(item, 'IdTipoDocumento', 0)) if getattr(item, 'IdTipoDocumento', None) else None,
-                    id_tipo_persona=int(getattr(item, 'IdTipoPersona', 0)) if getattr(item, 'IdTipoPersona', None) else None,
-                    gran_contribuyente=int(getattr(item, 'GranContribuyente', 0)) if getattr(item, 'GranContribuyente', None) else None,
-                    autorretenedor=int(getattr(item, 'Autorretenedor', 0)) if getattr(item, 'Autorretenedor', None) else None,
-                    regimen_comun=int(getattr(item, 'RegimenComun', 0)) if getattr(item, 'RegimenComun', None) else None,
-                    regimen_simplificado=int(getattr(item, 'RegimenSimplificado', 0)) if getattr(item, 'RegimenSimplificado', None) else None,
-                    id_departamento=int(getattr(item, 'IdDepartamento', 0)) if getattr(item, 'IdDepartamento', None) else None,
-                    id_ciudad=int(getattr(item, 'IdCiudad', 0)) if getattr(item, 'IdCiudad', None) else None,
-                    direccion_principal=str(getattr(item, 'DireccionPrincipal', '')),
-                    telefono=str(getattr(item, 'Telefono', '')),
-                    email=str(getattr(item, 'Email', '')),
-                    success=True,
-                    errores=[]
-                )
-
-            errores = []
-            if response and hasattr(response, 'Errores') and response.Errores:
-                for err in response.Errores:
-                    errores.append({"codigo": getattr(err, 'Codigo', ''), "mensaje": getattr(err, 'Mensaje', '')})
-
-            return TerceroResponse(success=False, errores=errores)
+            return self._parse_tercero_response(response, documento)
 
         except Exception as e:
             logger.error(f"Error consultando tercero: {e}")
             return TerceroResponse(success=False, errores=[{"codigo": "EXCEPTION", "mensaje": str(e)}])
+
+    def _parse_tercero_response(self, response: Any, documento: str) -> TerceroResponse:
+        if response is None:
+            return TerceroResponse(success=False, errores=[{"codigo": "NO_RESPONSE", "mensaje": "Respuesta vacía"}])
+
+        success = bool(self._field(response, "Success"))
+        result = self._field(response, "Result")
+        items: List[Any] = []
+        if result is not None:
+            inner = self._field(result, "ConsultasE") or self._field(result, "Result")
+            if isinstance(inner, (list, tuple)):
+                items = list(inner)
+            elif inner is not None:
+                items = [inner]
+            else:
+                items = [result]
+
+        item = None
+        for cand in items:
+            if self._field(cand, "Nombre") or self._field(cand, "NitCc") or self._field(cand, "Id") is not None:
+                item = cand
+                break
+
+        if item is not None:
+            nit_cc = str(self._field(item, "NitCc") or self._field(item, "NroIdentificacion") or documento)
+            # base sin DV si viene "93361223" o con DV
+            base = "".join(filter(str.isdigit, nit_cc))
+            return TerceroResponse(
+                id_tercero=int(self._field(item, "Id") or self._field(item, "IdTercero") or 0) or None,
+                nro_identificacion=base,
+                nombre_razon_social=str(self._field(item, "Nombre") or self._field(item, "NombreRazonSocial") or ""),
+                id_tipo_documento=self._int_or_none(self._field(item, "Id_tipo_doc") or self._field(item, "IdTipoDocumento")),
+                id_tipo_persona=None,
+                gran_contribuyente=1 if str(self._field(item, "GRAN_CONTRIBUYENTE") or "").upper() == "SI" else 0,
+                autorretenedor=1 if str(self._field(item, "AUTORRETENEDOR") or "").upper() == "SI" else 0,
+                regimen_comun=1 if str(self._field(item, "REGIMEN_COMUN") or "").upper() == "SI" else 0,
+                regimen_simplificado=1 if str(self._field(item, "REGIMEN_SIMPLIFICADO") or "").upper() == "SI" else 0,
+                id_departamento=self._int_or_none(self._field(item, "ID_DEPARTAMENTO") or self._field(item, "IdDepartamento")),
+                id_ciudad=self._int_or_none(self._field(item, "ID_CIUDAD") or self._field(item, "IdCiudad")),
+                direccion_principal=str(self._field(item, "DireccionPrincipal") or ""),
+                telefono=str(self._field(item, "TELEFONO") or self._field(item, "Telefono") or ""),
+                email=str(self._field(item, "EMAIL") or self._field(item, "Email") or ""),
+                success=success or True,
+                errores=[]
+            )
+
+        errores = self._extraer_errores_snri(response)
+        if not errores:
+            errores = [{"codigo": "NO_ENCONTRADO", "mensaje": "Tercero no existe en SNRI"}]
+        return TerceroResponse(success=False, errores=errores)
+
+    @staticmethod
+    def _int_or_none(value: Any) -> Optional[int]:
+        if value is None or value == "":
+            return None
+        try:
+            return int(str(value).strip())
+        except (TypeError, ValueError):
+            return None
+
+    @classmethod
+    def _extraer_errores_snri(cls, response: Any) -> List[dict]:
+        errores: List[dict] = []
+        if response is None:
+            return errores
+        err_container = cls._field(response, "Errores")
+        mensajes = []
+        if err_container is not None:
+            mensajes = (
+                cls._field(err_container, "MensajesFacturacionE")
+                or cls._field(err_container, "Result")
+                or []
+            )
+            if isinstance(mensajes, dict) or not isinstance(mensajes, (list, tuple)):
+                mensajes = [mensajes]
+        for m in mensajes or []:
+            desc = cls._field(m, "Descripcion") or cls._field(m, "Mensaje") or str(m)
+            code = cls._field(m, "IdMensaje") or cls._field(m, "Codigo") or cls._field(m, "Id") or ""
+            errores.append({"codigo": str(code), "mensaje": str(desc)})
+        msg = cls._field(response, "Mensaje")
+        if msg and not errores:
+            errores.append({"codigo": str(cls._field(response, "Id") or ""), "mensaje": str(msg)})
+        return errores
 
     async def crear_tercero(self, request: TerceroCreateRequest) -> TerceroResponse:
         if not self.client or not self._token:

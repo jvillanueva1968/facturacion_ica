@@ -39,6 +39,10 @@ def validar_nit_completo(nit_con_dv: str) -> bool:
 _nit_cache = {}
 
 
+def limpiar_cache_nit() -> None:
+    _nit_cache.clear()
+
+
 async def validar_nit_snri(nit: str, dv: str, snri_client=None) -> dict:
     nit, dv = normalizar_nit_dv(nit, dv)
     cache_key = f"{nit}-{dv}"
@@ -52,17 +56,24 @@ async def validar_nit_snri(nit: str, dv: str, snri_client=None) -> dict:
             return resultado
 
         if snri_client and snri_client.token:
-            tercero = await snri_client.consultar_tercero(f"{nit}{dv}")
-            if tercero.success:
+            tercero = await snri_client.consultar_tercero(nit)
+            if tercero.success and tercero.nombre_razon_social:
+                resultado = {
+                    "valido": True,
+                    "mensaje": f"NIT válido y existe en SNRI: {tercero.nombre_razon_social}",
+                    "datos": tercero.model_dump()
+                }
+            elif tercero.success:
                 resultado = {
                     "valido": True,
                     "mensaje": "NIT válido y existe en SNRI",
                     "datos": tercero.model_dump()
                 }
             else:
+                detalle = "; ".join(e.get("mensaje", "") for e in tercero.errores) or "sin detalle"
                 resultado = {
                     "valido": True,
-                    "mensaje": "NIT válido (algoritmo) pero no existe en SNRI",
+                    "mensaje": f"NIT válido (algoritmo) pero no existe en SNRI ({detalle})",
                     "datos": None
                 }
         else:
