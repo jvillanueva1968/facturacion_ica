@@ -221,16 +221,25 @@
       <span class="badge" :class="wsOk ? 'info' : 'warn'"
             x-text="wsOk ? 'tiempo real' : 'polling'"
             x-show="status==='processing'"></span>
+      <span class="badge" :class="confianzaBadgeCls" x-show="confianzaOcr!=null"
+            x-text="'OCR ' + Math.round(confianzaOcr) + '%'"></span>
     </h2>
 
     <div class="progress" x-show="status==='processing'">
-      <div :style="'width:' + (progress || 40) + '%; animation:none; margin:0; transition:width .3s'"
-           x-show="wsOk && progress"></div>
-      <div x-show="!wsOk || !progress"></div>
+      <div :style="'width:' + (progress || 5) + '%; animation:none; margin:0; transition:width .3s'"></div>
     </div>
     <p class="muted" x-show="status==='processing'"
        x-text="stageMsg || 'OCR → LLM → validación NIT…'"></p>
+    <div class="msg info" x-show="confianzaOcr!=null && confianzaOcr < 60 && status!=='failed'">
+      Confianza OCR baja (<span x-text="Math.round(confianzaOcr)"></span>%).
+      Revise los campos con cuidado antes de continuar.
+    </div>
     <div class="msg err" x-show="status==='failed'" x-text="error || 'Error procesando'"></div>
+    <details x-show="textoOcr" style="margin:0.5rem 0">
+      <summary class="muted" style="cursor:pointer">Texto OCR (confianza <span x-text="confianzaOcr!=null ? Math.round(confianzaOcr)+'%' : '—'"></span>)</summary>
+      <pre x-text="textoOcr"></pre>
+    </details>
+    <p class="muted" x-show="paginas!=null">Páginas: <span x-text="paginas"></span></p>
 
     <template x-if="status==='completed' && datos">
       <div>
@@ -411,6 +420,9 @@ function app() {
     wsOk: false,
     progress: 0,
     stageMsg: '',
+    confianzaOcr: null,
+    textoOcr: '',
+    paginas: null,
     jwt: localStorage.getItem('ica_jwt') || '',
     form: {
       nit_pagador: '', dv_pagador: '', fecha_transaccion: '', valor_total: '',
@@ -578,12 +590,24 @@ function app() {
       this.wsOk = false;
     },
 
+    get confianzaBadgeCls() {
+      const c = this.confianzaOcr;
+      if (c == null) return 'info';
+      if (c >= 70) return 'ok';
+      if (c >= 50) return 'warn';
+      return 'err';
+    },
+
     handleProgress(j) {
       if (j.type === 'ping') return;
       if (j.task_id && this.task_id && j.task_id !== this.task_id) return;
       if (j.status) this.status = j.status;
       if (j.progress != null) this.progress = j.progress;
       if (j.mensaje) this.stageMsg = j.mensaje;
+      if (j.stage) this.stageMsg = j.stage;
+      if (j.confianza != null) this.confianzaOcr = Number(j.confianza);
+      if (j.texto_ocr) this.textoOcr = j.texto_ocr;
+      if (j.paginas != null) this.paginas = j.paginas;
       if (j.datos) {
         this.datos = j.datos;
         this.applyDatos(j.datos);
@@ -610,6 +634,14 @@ function app() {
           if (!r.ok) return;
           const j = await r.json();
           this.status = j.status;
+          if (j.progress != null) this.progress = j.progress;
+          if (j.mensaje) this.stageMsg = j.mensaje;
+          if (j.stage) this.stageMsg = j.stage;
+          if (j.confianza_ocr != null) this.confianzaOcr = Number(j.confianza_ocr);
+          if (j.texto_ocr) this.textoOcr = j.texto_ocr;
+          if (j.paginas != null) this.paginas = j.paginas;
+          if (j.nit_validado != null) this.nitValidado = j.nit_validado;
+          if (j.nit_mensaje) this.nitMensaje = j.nit_mensaje;
           if (j.datos) {
             this.datos = j.datos;
             this.applyDatos(j.datos);
@@ -634,6 +666,9 @@ function app() {
         const j = await r.json();
         this.nitValidado = j.nit_validado;
         this.nitMensaje = j.nit_mensaje;
+        if (j.confianza_ocr != null) this.confianzaOcr = Number(j.confianza_ocr);
+        if (j.texto_ocr) this.textoOcr = j.texto_ocr;
+        if (j.paginas != null) this.paginas = j.paginas;
       } catch { /* ignore */ }
     },
 
@@ -798,6 +833,9 @@ function app() {
       this.error = null;
       this.progress = 0;
       this.stageMsg = '';
+      this.confianzaOcr = null;
+      this.textoOcr = '';
+      this.paginas = null;
       this.nitValidado = null;
       this.nitMensaje = null;
       this.facturaResult = null;

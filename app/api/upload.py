@@ -7,6 +7,8 @@ from fastapi import (
     BackgroundTasks,
     Depends,
 )
+import asyncio
+import re
 from uuid import UUID, uuid4
 from pathlib import Path
 from typing import Optional
@@ -18,7 +20,7 @@ from fastapi import Request
 
 from app.models.schemas import UploadResponse, DatosExtraidos, ComprobanteOut
 from app.core.deps import require_operator, require_viewer
-from app.core.progress import emit_stage
+from app.core.progress import emit_stage, progress_hub
 from app.core.rate_limit import limiter
 from app.services.ocr_service import OCRService
 from app.services.llm_service import LLMService
@@ -68,7 +70,8 @@ async def upload_comprobante(
     task_id = str(uuid4())
     upload_dir = Path(settings.upload_dir)
     upload_dir.mkdir(parents=True, exist_ok=True)
-    file_path = upload_dir / f"{task_id}_{file.filename}"
+    safe_name = re.sub(r"[^\w.\-]+", "_", Path(file.filename or "upload.bin").name)[:120]
+    file_path = upload_dir / f"{task_id}_{safe_name}"
 
     async with aiofiles.open(file_path, 'wb') as f:
         await f.write(content)
@@ -129,7 +132,9 @@ async def procesar_documento(
         async with SessionLocal() as session:
             repo = ComprobanteRepo(session)
 
-            texto_ocr, confianza, paginas = ocr_service.extract_text(file_path)
+            texto_ocr, confianza, paginas = await asyncio.to_thread(
+                ocr_service.extract_text, file_path
+            )
             await repo.update_ocr(task_id, texto=texto_ocr, confianza=confianza, paginas=paginas)
             logger.info("ocr_completado", task_id=task_id, confianza=confianza, paginas=paginas)
             await emit_stage(
@@ -190,6 +195,41 @@ async def procesar_documento(
         file_path.unlink(missing_ok=True)
 
 
+def _status_from_row(row, stage_event: Optional[dict] = None) -> UploadResponse:
+    datos = None
+    if row.datos_extraidos:
+        try:
+            datos = DatosExtraidos(**row.datos_extraidos)
+        except Exception:
+            datos = None
+
+    stage_event = stage_event or progress_hub.get_latest(row.task_id) or {}
+    progress = stage_event.get("progress")
+    if progress is None:
+        progress = {"completed": 100, "failed": 100}.get(row.status)
+    confianza = stage_event.get("confianza")
+    if confianza is None and row.confianza_ocr is not None:
+        confianza = float(row.confianza_ocr)
+    texto = stage_event.get("texto_ocr") or row.texto_ocr
+    if texto:
+        texto = str(texto)[:8000]
+
+    return UploadResponse(
+        task_id=row.task_id,
+        status=row.status,
+        mensaje=stage_event.get("mensaje"),
+        datos=datos,
+        errores=[str(e) for e in (row.errores or stage_event.get("errores") or [])],
+        progress=progress,
+        stage=stage_event.get("stage"),
+        confianza_ocr=confianza,
+        paginas=row.paginas,
+        nit_validado=row.nit_validado if row.nit_validado is not None else stage_event.get("nit_validado"),
+        nit_mensaje=row.nit_mensaje or stage_event.get("nit_mensaje"),
+        texto_ocr=texto,
+    )
+
+
 @router.get("/status/{task_id}", response_model=UploadResponse)
 async def get_task_status(task_id: str, db: AsyncSession = Depends(get_db)):
     try:
@@ -206,19 +246,7 @@ async def get_task_status(task_id: str, db: AsyncSession = Depends(get_db)):
     if not row:
         raise HTTPException(404, "Task no encontrada")
 
-    datos = None
-    if row.datos_extraidos:
-        try:
-            datos = DatosExtraidos(**row.datos_extraidos)
-        except Exception:
-            datos = None
-
-    return UploadResponse(
-        task_id=row.task_id,
-        status=row.status,
-        datos=datos,
-        errores=row.errores or [],
-    )
+    return _status_from_row(row)
 
 
 @router.get("/comprobantes/{task_id}", response_model=ComprobanteOut)

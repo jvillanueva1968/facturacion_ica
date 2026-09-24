@@ -157,6 +157,68 @@ def test_status_uuid_desconocido_es_404():
     assert r.status_code == 404
 
 
+def test_status_expone_confianza_y_progress():
+    from unittest.mock import AsyncMock, MagicMock, patch
+    from decimal import Decimal
+    from uuid import uuid4
+
+    from app.db.session import get_db
+    from app.api import upload as upload_mod
+
+    task_id = str(uuid4())
+    row = MagicMock(
+        task_id=task_id,
+        status="completed",
+        datos_extraidos=None,
+        errores=[],
+        confianza_ocr=Decimal("82.50"),
+        paginas=1,
+        texto_ocr="COMPROBANTE DE CONSIGNACION BBVA",
+        nit_validado=True,
+        nit_mensaje="DV coincide",
+    )
+    fake_repo = MagicMock()
+    fake_repo.get_by_task_id = AsyncMock(return_value=row)
+
+    async def _fake_db():
+        yield MagicMock()
+
+    with patch.object(upload_mod, "ComprobanteRepo", lambda session: fake_repo):
+        app.dependency_overrides[get_db] = _fake_db
+        try:
+            r = client.get(f"/api/v1/status/{task_id}")
+            assert r.status_code == 200, r.text
+            body = r.json()
+            assert body["status"] == "completed"
+            assert body["confianza_ocr"] == 82.5
+            assert body["paginas"] == 1
+            assert "CONSIGNACION" in body["texto_ocr"]
+            assert body["nit_validado"] is True
+            assert body["nit_mensaje"] == "DV coincide"
+            assert body["progress"] == 100
+        finally:
+            app.dependency_overrides.pop(get_db, None)
+
+
+def test_ui_muestra_confianza_ocr():
+    r = client.get("/")
+    assert r.status_code == 200
+    html = r.text
+    assert "confianzaOcr" in html
+    assert "textoOcr" in html
+    assert "Texto OCR" in html
+    assert "Confianza OCR baja" in html
+
+
+def test_upload_sanitiza_filename():
+    import re
+    from pathlib import Path
+
+    nombre = Path("../../../etc/passwd").name
+    safe = re.sub(r"[^\w.\-]+", "_", nombre)[:120]
+    assert Path(safe).name == safe
+
+
 def test_comprobante_uuid_invalido_es_404():
     r = client.get("/api/v1/comprobantes/not-a-uuid")
     assert r.status_code == 404

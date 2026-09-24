@@ -218,6 +218,13 @@ class UploadResponse(BaseModel):
     mensaje: Optional[str] = None
     datos: Optional[DatosExtraidos] = None
     errores: List[str] = []
+    progress: Optional[int] = None
+    stage: Optional[str] = None
+    confianza_ocr: Optional[float] = None
+    paginas: Optional[int] = None
+    nit_validado: Optional[bool] = None
+    nit_mensaje: Optional[str] = None
+    texto_ocr: Optional[str] = None
 
 
 class FacturaImpresaResponse(BaseModel):
@@ -256,6 +263,7 @@ class ComprobanteOut(BaseModel):
     status: str
     confianza_ocr: Optional[Decimal] = None
     paginas: Optional[int] = None
+    texto_ocr: Optional[str] = None
     datos_extraidos: Optional[dict] = None
     nit_validado: Optional[bool] = None
     nit_mensaje: Optional[str] = None
