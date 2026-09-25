@@ -674,7 +674,7 @@
     </div>
     <div x-show="facturaResult?.errores?.length">
       <h2 style="margin-top:1rem">Errores</h2>
-      <pre x-text="JSON.stringify(facturaResult.errores, null, 2)"></pre>
+      <pre x-text="JSON.stringify(facturaResult?.errores || [], null, 2)"></pre>
     </div>
     <div class="msg err" x-show="pdfError" x-text="pdfError"></div>
     <div class="actions">
