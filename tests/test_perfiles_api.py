@@ -305,3 +305,28 @@ def test_upload_acepta_perfil_id(monkeypatch, tmp_path):
                 assert args[4] == "credibanco-pos"
         finally:
             app.dependency_overrides.pop(get_db, None)
+
+def test_ui_incluye_config_y_perfiles():
+    from fastapi.testclient import TestClient
+    from app.main import app
+
+    r = TestClient(app).get("/")
+    assert r.status_code == 200
+    html = r.text
+    assert "Configuración" in html
+    assert "Perfil de extracción" in html
+    assert "Re-extraer con perfil" in html
+    assert "camposPerfil()" in html
+    assert "perfil_id" in html
+    assert "perfiles/catalogo/campos" in html
+    assert "xfd.append" not in html
+
+
+def test_ui_envia_perfil_id_en_upload():
+    from fastapi.testclient import TestClient
+    from app.main import app
+
+    html = TestClient(app).get("/").text
+    assert "fd.append('perfil_id'" in html
+    assert "reextrayendo" in html
+    assert "guardandoPerfil" in html

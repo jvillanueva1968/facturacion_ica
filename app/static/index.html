@@ -231,20 +231,24 @@
 <body x-data="app()" x-init="init()">
 <header>
   <h1>Facturación Automatizada ICA · SNRI + SIGMA</h1>
-  <div class="health" :class="healthOk ? 'ok' : 'bad'" x-text="healthOk ? 'API OK' : 'API caída'"></div>
+  <div style="display:flex; gap:0.75rem; align-items:center">
+    <button class="secondary" x-show="esAdmin" @click="config = !config"
+            x-text="config ? '← Volver' : '⚙ Configuración'" style="font-size:0.8rem; padding:0.4rem 0.8rem"></button>
+    <div class="health" :class="healthOk ? 'ok' : 'bad'" x-text="healthOk ? 'API OK' : 'API caída'"></div>
+  </div>
 </header>
 
 <main>
-  <div class="steps">
+  <div class="steps" x-show="!config">
     <span class="step" :class="{active: step===1, done: step>1}">1. Identificación</span>
     <span class="step" :class="{active: step===2, done: step>2}">2. Cargar comprobante</span>
     <span class="step" :class="{active: step===3, done: step>3}">3. Revisar datos</span>
     <span class="step" :class="{active: step===4, done: step>4}">4. Facturar</span>
-    <span class="step" :class="{active: step===5}">5. Resultado</span>
+    <span class="step" :class="{active: step===5, done: step>5}">5. Resultado</span>
   </div>
 
   <!-- STEP 1: Identificación (antes del upload — el comprobante no trae NIT) -->
-  <section class="card" x-show="step===1">
+  <section class="card" x-show="!config && step===1">
     <h2>Identificación del pagador</h2>
     <p class="muted" style="margin-top:0">
       El comprobante de pago <strong>no incluye NIT/identificación</strong>.
@@ -318,11 +322,19 @@
   </section>
 
   <!-- STEP 2: Upload -->
-  <section class="card" x-show="step===2">
+  <section class="card" x-show="!config && step===2">
     <h2>Cargar comprobante de pago</h2>
     <p class="muted" style="margin-top:0">
       Pagador: <strong x-text="(form.nit_pagador || '—') + (form.dv_pagador ? '-' + form.dv_pagador : '')"></strong>
     </p>
+    <label style="margin-bottom:0.75rem">Perfil de extracción
+      <select x-model="perfilSel">
+        <option value="">Automático (detectar por el documento)</option>
+        <template x-for="p in perfiles" :key="p.id">
+          <option :value="p.id" x-text="p.nombre + (p.es_default ? ' · por defecto' : '')"></option>
+        </template>
+      </select>
+    </label>
     <div class="drop"
          :class="{over: dragging}"
          @dragover.prevent="dragging=true"
@@ -342,7 +354,7 @@
   </section>
 
   <!-- STEP 3: Review -->
-  <section class="card" x-show="step===3">
+  <section class="card" x-show="!config && step===3">
     <h2>Revisar datos extraídos
       <span class="badge info" x-show="status==='processing'">Procesando…</span>
       <span class="badge ok" x-show="status==='completed'">Completado</span>
@@ -352,6 +364,7 @@
             x-show="status==='processing'"></span>
       <span class="badge" :class="confianzaBadgeCls" x-show="confianzaOcr!=null"
             x-text="'OCR ' + Math.round(confianzaOcr) + '%'"></span>
+      <span class="badge info" x-show="perfilCodigo" x-text="'Perfil: ' + perfilCodigo"></span>
     </h2>
 
     <div class="review-layout">
@@ -401,6 +414,12 @@
              x-text="nitValidado ? ('NIT válido: ' + (nitMensaje||'')) : ('NIT inválido: ' + (nitMensaje||''))">
         </div>
 
+        <div class="msg" style="background:rgba(251,191,36,0.1); border:1px solid var(--warn); color:var(--warn)"
+             x-show="camposFaltantes.length">
+          Campos requeridos sin valor: <span x-text="camposFaltantes.join(', ')"></span>
+          (verifique/complete manualmente).
+        </div>
+
         <div class="grid">
           <label>NIT pagador
             <input x-model="form.nit_pagador" />
@@ -408,27 +427,24 @@
           <label>DV
             <input x-model="form.dv_pagador" maxlength="1" />
           </label>
-          <label>Fecha transacción
-            <input type="date" x-model="form.fecha_transaccion" />
-          </label>
-          <label>Valor total
-            <input x-model="form.valor_total" />
-          </label>
-          <label>N° referencia
-            <input x-model="form.numero_referencia" />
-          </label>
-          <label>Banco
-            <input x-model="form.banco" />
-          </label>
-          <label>Forma de pago
-            <select x-model="form.forma_pago">
-              <option>CONSIGNACION</option>
-              <option>TRANSFERENCIA</option>
-              <option>CHEQUE_GERENCIA</option>
-              <option>PSE</option>
-              <option>DATAFONO</option>
-            </select>
-          </label>
+          <template x-for="c in camposPerfil()" :key="c.campo">
+            <label :class="c.campo === 'ubicacion' ? 'span2' : ''">
+              <span x-text="labelCampo(c.campo) + (c.requerido ? ' *' : '')"></span>
+              <template x-if="c.campo === 'forma_pago'">
+                <select x-model="form.forma_pago">
+                  <option>CONSIGNACION</option>
+                  <option>TRANSFERENCIA</option>
+                  <option>CHEQUE_GERENCIA</option>
+                  <option>PSE</option>
+                  <option>DATAFONO</option>
+                </select>
+              </template>
+              <template x-if="c.campo !== 'forma_pago'">
+                <input :type="c.campo === 'fecha' ? 'date' : 'text'"
+                       x-model="form[c.campo]" />
+              </template>
+            </label>
+          </template>
         </div>
 
         <div class="msg info" style="margin-top:0.75rem" x-show="terceroSnri">
@@ -505,7 +521,24 @@
 
         <div class="actions">
           <button class="secondary" @click="step=2">← Otra carga</button>
+          <button class="secondary" @click="reextraer()" :disabled="reextrayendo"
+                  x-text="reextrayendo ? 'Re-extrayendo…' : '↻ Re-extraer con perfil'"
+                  title="Vuelve a extraer los datos con el perfil elegido, sin repetir el OCR"></button>
           <button class="success" @click="goFacturar()" :disabled="facturando">Continuar a facturación →</button>
+        </div>
+        <div class="muted" style="margin-top:0.5rem">
+          Perfil aplicado:
+          <strong x-text="perfilCodigo || 'automático / LLM'"></strong>
+          <template x-if="perfilCodigo">
+            <span>
+              · cambiar:
+              <select x-model="perfilReextraer" style="font-size:0.8rem; padding:0.2rem 0.4rem">
+                <template x-for="p in perfiles" :key="p.id">
+                  <option :value="p.id" x-text="p.nombre"></option>
+                </template>
+              </select>
+            </span>
+          </template>
         </div>
       </div>
     </template>
@@ -528,7 +561,7 @@
   </div>
 
   <!-- STEP 4: Facturar -->
-  <section class="card" x-show="step===4">
+  <section class="card" x-show="!config && step===4">
     <h2>Confirmar y facturar</h2>
     <div class="grid">
       <label>NIT-DV <input :value="form.nit_pagador + '-' + form.dv_pagador" readonly /></label>
@@ -558,7 +591,7 @@
   </section>
 
   <!-- STEP 5: Result -->
-  <section class="card" x-show="step===5">
+  <section class="card" x-show="!config && step===5">
     <h2>Resultado</h2>
     <div class="msg" :class="facturaOk ? 'ok' : 'err'"
          x-text="facturaOk ? 'Factura emitida correctamente' : 'Factura con errores'">
@@ -597,6 +630,125 @@
         </tbody>
       </table>
     </div>
+  </section>
+
+  <!-- CONFIG: perfiles de extracción (admin) -->
+  <section class="card" x-show="config">
+    <h2>⚙ Configuración · Perfiles de extracción</h2>
+    <p class="muted" style="margin-top:0">
+      Un perfil define qué campos se extraen del comprobante y con qué expresión regular.
+      Si el documento no coincide con ningún perfil se usa el perfil por defecto; si tampoco,
+      el LLM completo. Los cambios de perfil se re-aplican sin repetir OCR.
+    </p>
+    <div class="msg err" x-show="configError" x-text="configError"></div>
+    <div class="msg ok" x-show="configOk" x-text="configOk"></div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Perfil</th><th>Código</th><th>Campos</th><th>Resp. LLM</th><th>Default</th><th>Activo</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <template x-for="p in perfilesAdmin" :key="p.id">
+          <tr>
+            <td x-text="p.nombre"></td>
+            <td><code x-text="p.codigo"></code></td>
+            <td x-text="Object.keys(p.campos || {}).length"></td>
+            <td x-text="p.llm_respaldo ? 'sí' : 'no'"></td>
+            <td><span class="badge info" x-show="p.es_default">default</span></td>
+            <td><span class="badge" :class="p.activo ? 'ok' : 'err'" x-text="p.activo ? 'sí' : 'no'"></span></td>
+            <td style="white-space:nowrap">
+              <button class="secondary" style="font-size:0.75rem; padding:0.25rem 0.5rem"
+                      @click="editarPerfil(p)">Editar</button>
+              <button class="secondary" style="font-size:0.75rem; padding:0.25rem 0.5rem"
+                      @click="marcarDefault(p)" x-show="!p.es_default">Default</button>
+              <button style="font-size:0.75rem; padding:0.25rem 0.5rem; background:var(--err)"
+                      @click="eliminarPerfil(p)">✕</button>
+            </td>
+          </tr>
+        </template>
+      </tbody>
+    </table>
+
+    <div class="actions">
+      <button @click="nuevoPerfil()">+ Nuevo perfil</button>
+      <button class="secondary" @click="cargarPerfiles()">↻ Recargar</button>
+    </div>
+
+    <template x-if="perfilEdit">
+    <div style="border-top:1px solid var(--border); margin-top:1rem; padding-top:1rem">
+      <h2 x-text="perfilEdit && perfilEdit.id ? 'Editar perfil' : 'Nuevo perfil'"></h2>
+      <div class="grid">
+        <label>Código (minúsculas, guiones)
+          <input x-model="perfilEdit.codigo" placeholder="banco-x-pos" />
+        </label>
+        <label>Nombre visible
+          <input x-model="perfilEdit.nombre" placeholder="Banco X POS" />
+        </label>
+        <label class="span2">Keywords de detección (coma)
+          <input x-model="perfilEdit.keywords" placeholder="banco x, venta aprobada" />
+        </label>
+        <label style="flex-direction:row; align-items:center; gap:0.5rem">
+          <input type="checkbox" x-model="perfilEdit.llm_respaldo" style="width:auto" />
+          Respaldo LLM (regex tiene prioridad sobre el LLM)
+        </label>
+        <label style="flex-direction:row; align-items:center; gap:0.5rem">
+          <input type="checkbox" x-model="perfilEdit.activo" style="width:auto" />
+          Activo
+        </label>
+        <label style="flex-direction:row; align-items:center; gap:0.5rem">
+          <input type="checkbox" x-model="perfilEdit.es_default" style="width:auto" />
+          Usar por defecto
+        </label>
+      </div>
+
+      <h2 style="margin-top:1rem">Campos a extraer</h2>
+      <table>
+        <thead>
+          <tr><th>Campo</th><th>Usar</th><th>Expresión regular</th><th>Literal</th><th>Req.</th><th>Orden</th></tr>
+        </thead>
+        <tbody>
+          <template x-for="campo in camposCatalogo" :key="campo">
+            <tr>
+              <td><code x-text="campo"></code></td>
+              <td>
+                <input type="checkbox" style="width:auto"
+                       :checked="!!(perfilEdit.campos[campo] && perfilEdit.campos[campo].usar)"
+                       @change="toggleCampo(campo, $event.target.checked)" />
+              </td>
+              <td>
+                <input style="width:100%" x-model="perfilEdit.campos[campo].regex"
+                       :disabled="!(perfilEdit.campos[campo] && perfilEdit.campos[campo].usar)"
+                       placeholder="TOTAL:?\s*\$?([\d.,]+)" />
+              </td>
+              <td>
+                <input style="width:110px" x-model="perfilEdit.campos[campo].literal"
+                       :disabled="!(perfilEdit.campos[campo] && perfilEdit.campos[campo].usar)"
+                       placeholder="CREDIBANCO" />
+              </td>
+              <td>
+                <input type="checkbox" style="width:auto"
+                       :checked="perfilEdit.campos[campo] && perfilEdit.campos[campo].requerido"
+                       :disabled="!(perfilEdit.campos[campo] && perfilEdit.campos[campo].usar)"
+                       @change="perfilEdit.campos[campo].requerido = $event.target.checked" />
+              </td>
+              <td>
+                <input type="number" style="width:64px" x-model.number="perfilEdit.campos[campo].orden"
+                       :disabled="!(perfilEdit.campos[campo] && perfilEdit.campos[campo].usar)" />
+              </td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+
+      <div class="actions">
+        <button class="success" @click="guardarPerfil()" :disabled="guardandoPerfil"
+                x-text="guardandoPerfil ? 'Guardando…' : 'Guardar perfil'"></button>
+        <button class="secondary" @click="perfilEdit = null">Cancelar</button>
+      </div>
+    </div>
+    </template>
   </section>
 </main>
 
@@ -638,9 +790,23 @@ function app() {
     imgRot: 0,
     imgScale: 1,
     jwt: localStorage.getItem('ica_jwt') || '',
+    config: false,
+    esAdmin: false,
+    perfiles: [],
+    camposCatalogo: [],
+    perfilSel: '',
+    perfilReextraer: '',
+    perfilCodigo: '',
+    camposFaltantes: [],
+    perfilEdit: null,
+    configError: '',
+    configOk: '',
+    guardandoPerfil: false,
+    reextrayendo: false,
     form: {
       nit_pagador: '', dv_pagador: '', fecha_transaccion: '', valor_total: '',
       numero_referencia: '', banco: '', forma_pago: 'CONSIGNACION',
+      convenio: '', ubicacion: '', autenticacion: '',
       nombre_razon_social: '', servicios: [],
       id_tipo_persona: '1',
       primer_nombre: '', segundo_nombre: '', primer_apellido: '', segundo_apellido: '',
@@ -776,9 +942,39 @@ function app() {
     },
 
     async init() {
-      await this.checkHealth();
+      await Promise.all([this.checkHealth(), this.cargarAuth(), this.cargarCatalogo(), this.cargarPerfiles()]);
       setInterval(() => this.checkHealth(), 15000);
       this.loadFacturas();
+    },
+
+    async cargarAuth() {
+      try {
+        const r = await fetch('/api/v1/auth/me', { headers: this.authHeaders() });
+        if (!r.ok) return;
+        const j = await r.json();
+        this.esAdmin = (j.roles || []).includes('admin');
+      } catch { this.esAdmin = false; }
+    },
+
+    async cargarPerfiles() {
+      try {
+        const r = await fetch('/api/v1/perfiles', { headers: this.authHeaders() });
+        if (!r.ok) return;
+        this.perfiles = await r.json();
+      } catch { /* ignore */ }
+    },
+
+    async cargarCatalogo() {
+      const def = ['valor_total', 'fecha', 'numero_referencia', 'banco',
+                   'forma_pago', 'convenio', 'ubicacion', 'autenticacion'];
+      try {
+        const r = await fetch('/api/v1/perfiles/catalogo/campos', { headers: this.authHeaders() });
+        if (r.ok) {
+          const j = await r.json();
+          if (j.campos?.length) { this.camposCatalogo = j.campos; return; }
+        }
+      } catch { /* ignore */ }
+      this.camposCatalogo = def;
     },
 
     async checkHealth() {
@@ -818,6 +1014,7 @@ function app() {
         fd.append('file', file);
         fd.append('nit_pagador', this.nitSolo());
         fd.append('dv_pagador', this.form.dv_pagador || '');
+        if (this.perfilSel) fd.append('perfil_id', this.perfilSel);
         const r = await fetch('/api/v1/upload', {
           method: 'POST',
           body: fd,
@@ -940,6 +1137,7 @@ function app() {
       if (j.confianza != null) this.confianzaOcr = Number(j.confianza);
       if (j.texto_ocr) this.textoOcr = j.texto_ocr;
       if (j.paginas != null) this.paginas = j.paginas;
+      if (j.perfil_codigo) this.perfilCodigo = j.perfil_codigo;
       if (j.datos) {
         this.datos = j.datos;
         this.applyDatos(j.datos);
@@ -1001,6 +1199,10 @@ function app() {
         if (j.confianza_ocr != null) this.confianzaOcr = Number(j.confianza_ocr);
         if (j.texto_ocr) this.textoOcr = j.texto_ocr;
         if (j.paginas != null) this.paginas = j.paginas;
+        if (j.perfil_id) {
+          const p = this.perfiles.find(x => x.id === j.perfil_id);
+          if (p) { this.perfilCodigo = p.codigo; this.perfilReextraer = p.id; }
+        }
       } catch { /* ignore */ }
     },
 
@@ -1022,6 +1224,223 @@ function app() {
       return Number.isFinite(n) && n >= 0 ? String(n) : '';
     },
 
+    perfilActual() {
+      if (this.perfilCodigo) {
+        const p = this.perfiles.find(x => x.codigo === this.perfilCodigo);
+        if (p) return p;
+      }
+      if (this.perfilSel) {
+        return this.perfiles.find(x => x.id === this.perfilSel) || null;
+      }
+      return null;
+    },
+
+    camposPerfil() {
+      const cat = this.camposCatalogo.length
+        ? this.camposCatalogo
+        : ['valor_total', 'fecha', 'numero_referencia', 'banco', 'forma_pago'];
+      const p = this.perfilActual();
+      const cfg = p && p.campos ? Object.entries(p.campos) : [];
+      if (!cfg.length) {
+        return ['valor_total', 'fecha', 'numero_referencia', 'banco', 'forma_pago']
+          .map(c => ({ campo: c, requerido: false, orden: 99 }));
+      }
+      return cfg
+        .filter(([campo]) => cat.includes(campo))
+        .map(([campo, v]) => ({
+          campo,
+          requerido: !!(v && v.requerido),
+          orden: (v && v.orden != null) ? Number(v.orden) : 99,
+        }))
+        .sort((a, b) => a.orden - b.orden);
+    },
+
+    labelCampo(c) {
+      const mapa = {
+        valor_total: 'Valor total',
+        fecha: 'Fecha transacción',
+        numero_referencia: 'N° referencia',
+        banco: 'Banco',
+        forma_pago: 'Forma de pago',
+        convenio: 'Convenio',
+        ubicacion: 'Ubicación',
+        autenticacion: 'Autenticación (AUT)',
+      };
+      return mapa[c] || c;
+    },
+
+    async reextraer() {
+      if (!this.task_id) return;
+      this.reextrayendo = true;
+      this.error = null;
+      try {
+        const r = await fetch('/api/v1/comprobantes/' + this.task_id + '/reextraer', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...this.authHeaders() },
+          body: JSON.stringify({ perfil_id: this.perfilReextraer || this.perfilSel || null }),
+        });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) {
+          throw new Error(typeof j.detail === 'string' ? j.detail : JSON.stringify(j.detail || j));
+        }
+        this.status = j.status || 'completed';
+        if (j.datos) {
+          this.datos = j.datos;
+          this.applyDatos(j.datos);
+        }
+        if (j.nit_validado != null) this.nitValidado = j.nit_validado;
+        if (j.nit_mensaje) this.nitMensaje = j.nit_mensaje;
+        if (j.texto_ocr) this.textoOcr = j.texto_ocr;
+        if (j.confianza_ocr != null) this.confianzaOcr = Number(j.confianza_ocr);
+        if (j.paginas != null) this.paginas = j.paginas;
+        this.stageMsg = this.perfilCodigo
+          ? 'Re-extraído con perfil ' + this.perfilCodigo
+          : 'Re-extraído (LLM)';
+      } catch (err) {
+        this.error = err.message || String(err);
+      } finally {
+        this.reextrayendo = false;
+      }
+    },
+
+    _camposVacios() {
+      const o = {};
+      for (const c of this.camposCatalogo) {
+        o[c] = { usar: false, regex: '', literal: '', requerido: false, orden: 99 };
+      }
+      return o;
+    },
+
+    nuevoPerfil() {
+      this.configError = '';
+      this.configOk = '';
+      this.perfilEdit = {
+        id: null, codigo: '', nombre: '', keywords: '',
+        llm_respaldo: true, activo: true, es_default: false,
+        campos: this._camposVacios(),
+      };
+    },
+
+    editarPerfil(p) {
+      this.configError = '';
+      this.configOk = '';
+      const campos = this._camposVacios();
+      for (const [k, v] of Object.entries(p.campos || {})) {
+        if (campos[k]) {
+          campos[k] = {
+            usar: true,
+            regex: (v && v.regex) || '',
+            literal: (v && v.literal) || '',
+            requerido: !!(v && v.requerido),
+            orden: (v && v.orden != null) ? Number(v.orden) : 99,
+          };
+        }
+      }
+      this.perfilEdit = {
+        id: p.id,
+        codigo: p.codigo,
+        nombre: p.nombre,
+        keywords: (p.detect_keywords || []).join(', '),
+        llm_respaldo: !!p.llm_respaldo,
+        activo: !!p.activo,
+        es_default: !!p.es_default,
+        campos,
+      };
+    },
+
+    toggleCampo(campo, on) {
+      const c = this.perfilEdit.campos[campo];
+      if (!c) return;
+      c.usar = on;
+      if (on && !c.orden) c.orden = 99;
+    },
+
+    async guardarPerfil() {
+      this.guardandoPerfil = true;
+      this.configError = '';
+      this.configOk = '';
+      try {
+        const campos = {};
+        for (const [k, v] of Object.entries(this.perfilEdit.campos || {})) {
+          if (!v.usar) continue;
+          campos[k] = {
+            regex: (v.regex || '').trim(),
+            literal: (v.literal || '').trim(),
+            requerido: !!v.requerido,
+            orden: Number(v.orden) || 99,
+          };
+        }
+        const body = {
+          codigo: (this.perfilEdit.codigo || '').trim(),
+          nombre: (this.perfilEdit.nombre || '').trim(),
+          detect_keywords: (this.perfilEdit.keywords || '').split(',')
+            .map(s => s.trim()).filter(Boolean),
+          campos,
+          llm_respaldo: !!this.perfilEdit.llm_respaldo,
+          activo: !!this.perfilEdit.activo,
+          es_default: !!this.perfilEdit.es_default,
+        };
+        const url = this.perfilEdit.id
+          ? '/api/v1/perfiles/' + this.perfilEdit.id
+          : '/api/v1/perfiles';
+        const r = await fetch(url, {
+          method: this.perfilEdit.id ? 'PUT' : 'POST',
+          headers: { 'Content-Type': 'application/json', ...this.authHeaders() },
+          body: JSON.stringify(body),
+        });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) {
+          throw new Error(typeof j.detail === 'string' ? j.detail : JSON.stringify(j.detail || j));
+        }
+        this.configOk = 'Perfil guardado: ' + j.nombre;
+        this.perfilEdit = null;
+        await this.cargarPerfiles();
+      } catch (err) {
+        this.configError = err.message || String(err);
+      } finally {
+        this.guardandoPerfil = false;
+      }
+    },
+
+    async eliminarPerfil(p) {
+      if (!window.confirm('¿Eliminar el perfil "' + p.nombre + '"?')) return;
+      this.configError = '';
+      this.configOk = '';
+      try {
+        const r = await fetch('/api/v1/perfiles/' + p.id, {
+          method: 'DELETE',
+          headers: this.authHeaders(),
+        });
+        if (!r.ok && r.status !== 204) {
+          const j = await r.json().catch(() => ({}));
+          throw new Error(typeof j.detail === 'string' ? j.detail : 'No se pudo eliminar');
+        }
+        this.configOk = 'Perfil eliminado';
+        await this.cargarPerfiles();
+      } catch (err) {
+        this.configError = err.message || String(err);
+      }
+    },
+
+    async marcarDefault(p) {
+      this.configError = '';
+      this.configOk = '';
+      try {
+        const r = await fetch('/api/v1/perfiles/' + p.id + '/default', {
+          method: 'PUT',
+          headers: this.authHeaders(),
+        });
+        if (!r.ok) {
+          const j = await r.json().catch(() => ({}));
+          throw new Error(typeof j.detail === 'string' ? j.detail : 'No se pudo actualizar');
+        }
+        this.configOk = '"' + p.nombre + '" es ahora el perfil por defecto';
+        await this.cargarPerfiles();
+      } catch (err) {
+        this.configError = err.message || String(err);
+      }
+    },
+
     applyDatos(d) {
       if (d.nit_pagador) this.form.nit_pagador = d.nit_pagador;
       if (d.dv_pagador) this.form.dv_pagador = d.dv_pagador;
@@ -1033,6 +1452,15 @@ function app() {
       this.form.numero_referencia = d.numero_referencia || '';
       this.form.banco = d.banco || '';
       this.form.forma_pago = d.forma_pago || 'CONSIGNACION';
+      this.form.convenio = d.convenio || '';
+      this.form.ubicacion = d.ubicacion || '';
+      this.form.autenticacion = d.autenticacion || '';
+      if (d.perfil_codigo) {
+        this.perfilCodigo = d.perfil_codigo;
+        const p = this.perfiles.find(x => x.codigo === d.perfil_codigo);
+        this.perfilReextraer = p ? p.id : '';
+      }
+      this.camposFaltantes = (d.campos_perfil && d.campos_perfil._faltantes) || [];
       if (d.servicios?.length) {
         this.form.servicios = d.servicios.map(s => ({
           codigo: s.codigo || '',
@@ -1217,11 +1645,19 @@ function app() {
       this.facturas = [];
       this.pdfDescargando = false;
       this.pdfError = '';
+      this.perfilCodigo = '';
+      this.camposFaltantes = [];
+      this.perfilSel = '';
+      this.perfilReextraer = '';
+      this.perfilEdit = null;
       this.form.servicios = [];
       this.form.nit_pagador = '';
       this.form.dv_pagador = '';
       this.form.numero_referencia = '';
       this.form.valor_total = '';
+      this.form.convenio = '';
+      this.form.ubicacion = '';
+      this.form.autenticacion = '';
       this.form.nombre_razon_social = '';
       this.form.id_tipo_persona = '1';
       this.form.primer_nombre = '';
