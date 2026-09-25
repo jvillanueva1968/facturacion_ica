@@ -173,3 +173,5 @@ def test_ui_expone_tipo_persona_y_nombres():
     assert "1 - Personas Naturales" in html
     assert "2 - Personas Jurídicas" in html
     assert "1 — Natural (nombres/apellidos)" not in html
+    assert "girarImagen" in html
+    assert "rotStyle" in html
