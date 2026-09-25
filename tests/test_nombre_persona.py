@@ -166,3 +166,4 @@ def test_ui_expone_tipo_persona_y_nombres():
     assert "imgZoom" in html
     assert "createObjectURL" in html
     assert "clic para ampliar" in html
+    assert "nitSolo().length < 6" in html

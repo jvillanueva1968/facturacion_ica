@@ -282,7 +282,9 @@
     <div class="actions">
       <button class="secondary" @click="validarNitPre()" :disabled="validandoNit"
               x-text="validandoNit ? 'Validando…' : 'Validar NIT'"></button>
-      <button class="success" @click="identificar()" :disabled="validandoNit">
+      <button class="success" @click="identificar()"
+              :disabled="validandoNit || nitSolo().length < 6"
+              :title="nitSolo().length < 6 ? 'Digite la identificación (mínimo 6 dígitos)' : ''">
         Continuar a carga →
       </button>
     </div>
