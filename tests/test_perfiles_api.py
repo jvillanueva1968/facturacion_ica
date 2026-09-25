@@ -362,3 +362,13 @@ def test_ui_bindings_referencian_estado_existente():
     roots -= declared
     missing = sorted(r for r in roots if r not in props)
     assert not missing, f"Bindings con identificador inexistente: {missing}"
+
+def test_ui_otra_identificacion_limpia_estado():
+    from fastapi.testclient import TestClient
+    from app.main import app
+
+    html = TestClient(app).get("/").text
+    assert 'otraIdentificacion()' in html
+    assert 'otraCarga()' in html
+    assert '@click="step=1"' not in html
+    assert 'resetResultados()' in html

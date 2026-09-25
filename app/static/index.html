@@ -349,7 +349,7 @@
     <div class="progress" x-show="uploading"><div></div></div>
     <div class="msg err" x-show="error" x-text="error"></div>
     <div class="actions">
-      <button class="secondary" @click="step=1">← Otra identificación</button>
+      <button class="secondary" @click="otraIdentificacion()">← Otra identificación</button>
     </div>
   </section>
 
@@ -520,7 +520,7 @@
         </details>
 
         <div class="actions">
-          <button class="secondary" @click="step=2">← Otra carga</button>
+          <button class="secondary" @click="otraCarga()">← Otra carga</button>
           <button class="secondary" @click="reextraer()" :disabled="reextrayendo"
                   x-text="reextrayendo ? 'Re-extrayendo…' : '↻ Re-extraer con perfil'"
                   title="Vuelve a extraer los datos con el perfil elegido, sin repetir el OCR"></button>
@@ -1002,7 +1002,7 @@ function app() {
         this.error = 'Archivo mayor a 10 MB';
         return;
       }
-      if (this.docPreview) URL.revokeObjectURL(this.docPreview);
+      this.resetResultados();
       this.docPreview = URL.createObjectURL(file);
       this.docPreviewName = file.name || '';
       this.docPreviewIsPdf = file.type === 'application/pdf';
@@ -1487,6 +1487,53 @@ function app() {
       }
     },
 
+    resetResultados() {
+      clearInterval(this.pollTimer);
+      this.closeWs();
+      this.status = null;
+      this.task_id = null;
+      this.datos = null;
+      this.progress = 0;
+      this.stageMsg = '';
+      this.confianzaOcr = null;
+      this.textoOcr = '';
+      this.paginas = null;
+      this.perfilCodigo = '';
+      this.camposFaltantes = [];
+      this.error = null;
+      if (this.docPreview) URL.revokeObjectURL(this.docPreview);
+      this.docPreview = null;
+      this.docPreviewName = '';
+      this.docPreviewIsPdf = false;
+      this.imgZoom = false;
+      this.imgRot = 0;
+      this.imgScale = 1;
+      this.form.servicios = [];
+      this.form.fecha_transaccion = '';
+      this.form.valor_total = '';
+      this.form.numero_referencia = '';
+      this.form.banco = '';
+      this.form.forma_pago = 'CONSIGNACION';
+      this.form.convenio = '';
+      this.form.ubicacion = '';
+      this.form.autenticacion = '';
+    },
+
+    otraIdentificacion() {
+      this.resetResultados();
+      this.form.nit_pagador = '';
+      this.form.dv_pagador = '';
+      this.terceroSnri = null;
+      this.nitValidado = null;
+      this.nitMensaje = null;
+      this.step = 1;
+    },
+
+    otraCarga() {
+      this.resetResultados();
+      this.step = 2;
+    },
+
     goFacturar() {
       this.error = null;
       this.step = 4;
@@ -1618,26 +1665,9 @@ function app() {
     },
 
     reset() {
-      clearInterval(this.pollTimer);
-      this.closeWs();
+      this.resetResultados();
       this.step = 1;
-      this.task_id = null;
-      this.status = null;
-      this.datos = null;
-      this.error = null;
-      this.progress = 0;
-      this.stageMsg = '';
-      this.confianzaOcr = null;
-      this.textoOcr = '';
-      this.paginas = null;
       this.terceroSnri = null;
-      if (this.docPreview) URL.revokeObjectURL(this.docPreview);
-      this.docPreview = null;
-      this.docPreviewName = '';
-      this.docPreviewIsPdf = false;
-      this.imgZoom = false;
-      this.imgRot = 0;
-      this.imgScale = 1;
       this.nitValidado = null;
       this.nitMensaje = null;
       this.facturaResult = null;
@@ -1645,19 +1675,11 @@ function app() {
       this.facturas = [];
       this.pdfDescargando = false;
       this.pdfError = '';
-      this.perfilCodigo = '';
-      this.camposFaltantes = [];
       this.perfilSel = '';
       this.perfilReextraer = '';
       this.perfilEdit = null;
-      this.form.servicios = [];
       this.form.nit_pagador = '';
       this.form.dv_pagador = '';
-      this.form.numero_referencia = '';
-      this.form.valor_total = '';
-      this.form.convenio = '';
-      this.form.ubicacion = '';
-      this.form.autenticacion = '';
       this.form.nombre_razon_social = '';
       this.form.id_tipo_persona = '1';
       this.form.primer_nombre = '';
