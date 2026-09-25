@@ -404,10 +404,13 @@
         <div class="msg info" style="margin-top:0.75rem" x-show="terceroSnri">
           <strong>Tercero SNRI (solo lectura)</strong>
           <div class="grid" style="margin-top:0.5rem">
-            <label>Tipo persona
-              <input :value="String(form.id_tipo_persona)==='2' ? '2 — Jurídica (razón social)' : '1 — Natural (nombres/apellidos)'"
-                     readonly />
-            </label>
+        <label>Tipo persona
+          <input :value="String(form.id_tipo_persona)==='2' ? '2 — Jurídica (razón social)' : '1 — Natural (nombres/apellidos)'"
+                 readonly />
+        </label>
+        <label>Tipo documento
+          <input :value="nombreTipoDoc(terceroSnri?.id_tipo_documento)" readonly />
+        </label>
             <template x-if="String(form.id_tipo_persona) === '2'">
               <label>Razón social
                 <input :value="form.nombre_razon_social" readonly />
@@ -620,6 +623,15 @@ function app() {
       return [this.form.primer_nombre, this.form.segundo_nombre,
               this.form.primer_apellido, this.form.segundo_apellido]
         .map(s => (s || '').trim()).filter(Boolean).join(' ');
+    },
+
+    nombreTipoDoc(id) {
+      const mapa = {
+        '1': '1 — CÉDULA', '2': '2 — NIT', '3': '3 — CE',
+        '4': '4 — PASAPORTE', '5': '5 — TI',
+      };
+      if (id == null || id === '') return '—';
+      return mapa[String(id)] || String(id);
     },
 
     aplicarTerceroSnri(datos) {
