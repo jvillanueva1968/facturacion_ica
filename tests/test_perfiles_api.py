@@ -372,3 +372,41 @@ def test_ui_otra_identificacion_limpia_estado():
     assert 'otraCarga()' in html
     assert '@click="step=1"' not in html
     assert 'resetResultados()' in html
+
+def test_fusionar_datos_fecha_perfil_prioriza():
+    from datetime import date
+    from decimal import Decimal
+
+    from app.api.upload import _fusionar_datos
+    from app.models.schemas import DatosExtraidos
+    from app.services.extraction import PerfilExtraccionData
+
+    base = DatosExtraidos(
+        forma_pago="DATAFONO",
+        servicios=[{"descripcion": "SERVICIO", "valor": "1500000.50"}],
+        nit_pagador="8001972688",
+        dv_pagador="4",
+        fecha_transaccion=date(2026, 1, 1),
+        valor_total=Decimal("1500000.50"),
+        numero_referencia="336609608",
+    )
+    perfil = PerfilExtraccionData(
+        codigo="credibanco-pos",
+        nombre="Credibanco POS",
+        campos={"fecha": {"regex": r"(\d{1,2}/\d{1,2}/\d{4})", "requerido": True, "orden": 2}},
+    )
+    out = _fusionar_datos(base, {"fecha": "2026-09-18"}, perfil)
+    assert str(out.fecha_transaccion) == "2026-09-18"
+
+    out2 = _fusionar_datos(base, {"fecha": "xx/yy/zzzz"}, perfil)
+    assert str(out2.fecha_transaccion) == "2026-01-01"
+
+
+def test_ui_fecha_usa_fecha_transaccion():
+    from fastapi.testclient import TestClient
+    from app.main import app
+
+    html = TestClient(app).get("/").text
+    assert "campoFormKey(c.campo)" in html
+    assert "campoFormKey(campo)" in html
+    assert 'x-model="form[c.campo]"' not in html

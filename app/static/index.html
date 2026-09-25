@@ -483,7 +483,7 @@
               </template>
               <template x-if="c.campo !== 'forma_pago'">
                 <input :type="c.campo === 'fecha' ? 'date' : 'text'"
-                       x-model="form[c.campo]" />
+                       x-model="form[campoFormKey(c.campo)]" />
               </template>
             </label>
           </template>
@@ -1311,6 +1311,10 @@ function app() {
       return mapa[c] || c;
     },
 
+    campoFormKey(campo) {
+      return campo === 'fecha' ? 'fecha_transaccion' : campo;
+    },
+
     ocrSnippets() {
       const p = this.perfilActual();
       if (!p || !p.campos || !this.textoOcr) return [];
@@ -1325,7 +1329,7 @@ function app() {
           campo,
           requerido: !!cfg.requerido,
           texto: this.matchTextoOcr(cfg, texto),
-          valor: (this.datos && this.datos[campo]) || this.form[campo] || '',
+          valor: (this.datos && this.datos[this.campoFormKey(campo)]) || this.form[this.campoFormKey(campo)] || '',
         }));
     },
 

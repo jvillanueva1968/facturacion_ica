@@ -119,6 +119,12 @@ def _fusionar_datos(
             continue
         if campo == "fecha_transaccion":
             continue
+        if campo == "fecha":
+            try:
+                dump["fecha_transaccion"] = date.fromisoformat(valor)
+            except ValueError:
+                pass
+            continue
         if campo == "valor_total":
             try:
                 dump["valor_total"] = Decimal(valor)
