@@ -161,6 +161,15 @@
       cursor: zoom-in;
       display: block;
       margin: 0 auto;
+      transition: transform 0.15s ease;
+    }
+    .ocr-viewport {
+      height: 300px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      position: relative;
     }
     .ocr-doc .zoom-hint {
       position: absolute;
@@ -370,15 +379,17 @@
         <span class="zoom-hint">clic para ampliar</span>
         <button type="button" class="rot-btn" @click.stop="girarImagen()"
                 title="Girar 90°">↻ Girar</button>
-        <template x-if="docPreviewIsPdf">
-          <iframe :src="docPreview" title="Documento cargado"
-                  :style="rotStyle"
-                  @click.stop="imgZoom = true" style="cursor:zoom-in"></iframe>
-        </template>
-        <template x-if="docPreview && !docPreviewIsPdf">
-          <img :src="docPreview" alt="Documento cargado" :style="rotStyle"
-               @click="imgZoom = true" />
-        </template>
+        <div class="ocr-viewport">
+          <template x-if="docPreviewIsPdf">
+            <iframe :src="docPreview" title="Documento cargado"
+                    :style="rotStyle"
+                    @click.stop="abrirZoom()" style="cursor:zoom-in"></iframe>
+          </template>
+          <template x-if="docPreview && !docPreviewIsPdf">
+            <img :src="docPreview" alt="Documento cargado" :style="rotStyle"
+                 @click="abrirZoom()" />
+          </template>
+        </div>
         <p class="side-name" x-show="docPreviewName" x-text="docPreviewName" style="margin:0.4rem 0 0"></p>
       </div>
     </div>
@@ -625,6 +636,7 @@ function app() {
     docPreviewIsPdf: false,
     imgZoom: false,
     imgRot: 0,
+    imgScale: 1,
     jwt: localStorage.getItem('ica_jwt') || '',
     form: {
       nit_pagador: '', dv_pagador: '', fecha_transaccion: '', valor_total: '',
@@ -799,6 +811,7 @@ function app() {
       this.docPreviewName = file.name || '';
       this.docPreviewIsPdf = file.type === 'application/pdf';
       this.imgRot = 0;
+      this.imgScale = 1;
       this.uploading = true;
       try {
         const fd = new FormData();
@@ -879,11 +892,42 @@ function app() {
 
     girarImagen() {
       this.imgRot = ((this.imgRot + 90) % 360);
+      this.$nextTick(() => this.calcularEscalaGiro());
+    },
+
+    abrirZoom() {
+      this.imgZoom = true;
+      this.$nextTick(() => this.calcularEscalaGiro());
+    },
+
+    calcularEscalaGiro() {
+      if (!this.imgRot) { this.imgScale = 1; return; }
+      const scope = this.imgZoom ? document.querySelector('.img-modal')
+                                 : document.querySelector('.ocr-doc');
+      if (!scope) return;
+      const el = scope.querySelector('img, iframe');
+      if (!el) return;
+      const box = this.imgZoom
+        ? { w: Math.max(window.innerWidth * 0.9, 50), h: Math.max(window.innerHeight * 0.9, 50) }
+        : { w: Math.max(scope.clientWidth - 16, 50), h: 300 };
+      const w = el.offsetWidth || 1;
+      const h = el.offsetHeight || 1;
+      if (this.imgRot % 180 === 0) {
+        this.imgScale = Math.min(box.w / w, box.h / h, 1);
+      } else {
+        // 90°/270°: lo visual es (h × w); escalar para que quepa en box
+        this.imgScale = Math.min(box.w / h, box.h / w);
+      }
+      if (!Number.isFinite(this.imgScale) || this.imgScale <= 0) this.imgScale = 1;
     },
 
     get rotStyle() {
       if (!this.imgRot) return {};
-      return { transform: 'rotate(' + this.imgRot + 'deg)', transformOrigin: 'center' };
+      const s = this.imgScale && this.imgScale !== 1 ? ' scale(' + this.imgScale + ')' : '';
+      return {
+        transform: 'rotate(' + this.imgRot + 'deg)' + s,
+        transformOrigin: 'center',
+      };
     },
 
     handleProgress(j) {
@@ -1165,6 +1209,7 @@ function app() {
       this.docPreviewIsPdf = false;
       this.imgZoom = false;
       this.imgRot = 0;
+      this.imgScale = 1;
       this.nitValidado = null;
       this.nitMensaje = null;
       this.facturaResult = null;

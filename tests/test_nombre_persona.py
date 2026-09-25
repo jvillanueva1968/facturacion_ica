@@ -175,3 +175,5 @@ def test_ui_expone_tipo_persona_y_nombres():
     assert "1 — Natural (nombres/apellidos)" not in html
     assert "girarImagen" in html
     assert "rotStyle" in html
+    assert "calcularEscalaGiro" in html
+    assert "ocr-viewport" in html
