@@ -410,3 +410,4 @@ def test_ui_fecha_usa_fecha_transaccion():
     assert "campoFormKey(c.campo)" in html
     assert "campoFormKey(campo)" in html
     assert 'x-model="form[c.campo]"' not in html
+    assert "fmtFecha(val)" in html

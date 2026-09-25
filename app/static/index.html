@@ -1325,12 +1325,22 @@ function app() {
       return Object.entries(p.campos)
         .filter(([campo, cfg]) => cfg && typeof cfg === 'object' && cat.includes(campo))
         .sort(([, a], [, b]) => ((a.orden != null) ? Number(a.orden) : 99) - ((b.orden != null) ? Number(b.orden) : 99))
-        .map(([campo, cfg]) => ({
-          campo,
-          requerido: !!cfg.requerido,
-          texto: this.matchTextoOcr(cfg, texto),
-          valor: (this.datos && this.datos[this.campoFormKey(campo)]) || this.form[this.campoFormKey(campo)] || '',
-        }));
+        .map(([campo, cfg]) => {
+          const k = this.campoFormKey(campo);
+          const val = (this.datos && this.datos[k]) || this.form[k] || '';
+          return {
+            campo,
+            requerido: !!cfg.requerido,
+            texto: this.matchTextoOcr(cfg, texto),
+            valor: campo === 'fecha' ? this.fmtFecha(val) : val,
+          };
+        });
+    },
+
+    fmtFecha(v) {
+      if (!v) return '';
+      const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(v));
+      return m ? `${m[3]}/${m[2]}/${m[1]}` : String(v);
     },
 
     matchTextoOcr(cfg, texto) {
