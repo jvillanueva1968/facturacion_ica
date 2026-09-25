@@ -345,7 +345,7 @@
 
     <div class="ocr-split" x-show="textoOcr || docPreview">
       <div class="ocr-text">
-        <details x-show="textoOcr">
+        <details x-show="textoOcr" open>
           <summary class="muted" style="cursor:pointer">Texto OCR (confianza <span x-text="confianzaOcr!=null ? Math.round(confianzaOcr)+'%' : '—'"></span>)</summary>
           <pre x-text="textoOcr"></pre>
         </details>
