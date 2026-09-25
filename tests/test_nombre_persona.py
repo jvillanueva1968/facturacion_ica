@@ -167,7 +167,8 @@ def test_ui_expone_tipo_persona_y_nombres():
     assert "createObjectURL" in html
     assert "clic para ampliar" in html
     assert "nitSolo().length < 6" in html
-    assert '<details x-show="textoOcr" open>' in html
+    assert "ocrSnippets()" in html
+    assert "<pre x-text=\"textoOcr\">" not in html
     assert "nombreTipoDoc" in html
     assert "Tipo documento" in html
     assert "1 - Personas Naturales" in html

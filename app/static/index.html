@@ -143,6 +143,25 @@
     @media (max-width: 720px) { .ocr-split { grid-template-columns: 1fr; } }
     .ocr-split details { margin: 0; }
     .ocr-split pre { max-height: 320px; }
+    .ocr-campos {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.6rem;
+      max-height: 320px;
+      overflow: auto;
+    }
+    .ocr-campos table { font-size: 0.8rem; }
+    .ocr-campos th { text-align: left; }
+    .ocr-campos td { vertical-align: top; }
+    .ocr-campos td code {
+      white-space: pre-wrap;
+      word-break: break-word;
+      background: none;
+      border: 0;
+      padding: 0;
+      color: var(--muted, #94a3b8);
+    }
     .ocr-doc {
       background: var(--bg);
       border: 1px solid var(--border);
@@ -382,10 +401,33 @@
 
     <div class="ocr-split" x-show="textoOcr || docPreview">
       <div class="ocr-text">
-        <details x-show="textoOcr" open>
-          <summary class="muted" style="cursor:pointer">Texto OCR (confianza <span x-text="confianzaOcr!=null ? Math.round(confianzaOcr)+'%' : '—'"></span>)</summary>
-          <pre x-text="textoOcr"></pre>
-        </details>
+        <div class="ocr-campos" x-show="textoOcr">
+          <div class="muted" style="margin-bottom:0.4rem">
+            Texto OCR · campos del perfil
+            (confianza <span x-text="confianzaOcr!=null ? Math.round(confianzaOcr)+'%' : '—'"></span>)
+          </div>
+          <template x-if="!perfilActual()">
+            <p class="muted" style="margin:0">
+              Sin perfil de extracción: seleccione uno en el paso 2 o espere la detección automática.
+            </p>
+          </template>
+          <template x-if="perfilActual()">
+            <table>
+              <thead>
+                <tr><th>Campo</th><th>Texto OCR</th><th>Valor</th></tr>
+              </thead>
+              <tbody>
+                <template x-for="s in ocrSnippets()" :key="s.campo">
+                  <tr>
+                    <td x-text="labelCampo(s.campo) + (s.requerido ? ' *' : '')"></td>
+                    <td><code x-text="s.texto || '—'"></code></td>
+                    <td x-text="s.valor || '—'"></td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </template>
+        </div>
         <p class="muted" x-show="!textoOcr">Esperando OCR…</p>
       </div>
       <div class="ocr-doc" x-show="docPreview">
@@ -1267,6 +1309,35 @@ function app() {
         autenticacion: 'Autenticación (AUT)',
       };
       return mapa[c] || c;
+    },
+
+    ocrSnippets() {
+      const p = this.perfilActual();
+      if (!p || !p.campos || !this.textoOcr) return [];
+      const cat = this.camposCatalogo.length
+        ? this.camposCatalogo
+        : ['valor_total', 'fecha', 'numero_referencia', 'banco', 'forma_pago'];
+      const texto = this.textoOcr;
+      return Object.entries(p.campos)
+        .filter(([campo, cfg]) => cfg && typeof cfg === 'object' && cat.includes(campo))
+        .sort(([, a], [, b]) => ((a.orden != null) ? Number(a.orden) : 99) - ((b.orden != null) ? Number(b.orden) : 99))
+        .map(([campo, cfg]) => ({
+          campo,
+          requerido: !!cfg.requerido,
+          texto: this.matchTextoOcr(cfg, texto),
+          valor: (this.datos && this.datos[campo]) || this.form[campo] || '',
+        }));
+    },
+
+    matchTextoOcr(cfg, texto) {
+      if (!texto) return '';
+      if (cfg.literal) return String(cfg.literal);
+      if (!cfg.regex) return '';
+      let m = null;
+      try { m = texto.match(new RegExp(cfg.regex, 'i')); } catch (e) { return ''; }
+      if (!m) return '';
+      const raw = String(m[0]).replace(/\s+/g, ' ').trim();
+      return raw.length > 220 ? raw.slice(0, 220) + '…' : raw;
     },
 
     async reextraer() {
