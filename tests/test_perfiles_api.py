@@ -414,3 +414,5 @@ def test_ui_fecha_usa_fecha_transaccion():
     assert 'class="proc-loader"' in html
     assert 'class="spinner"' in html
     assert "status==='processing'" in html
+    assert "previewEdicion(campo)" in html
+    assert "'texto_ocr' in j" in html

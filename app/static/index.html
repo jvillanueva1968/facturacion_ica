@@ -182,6 +182,14 @@
       padding: 0;
       color: var(--muted, #94a3b8);
     }
+    .ocr-preview code {
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-size: 0.72rem;
+      background: rgba(56,189,248,0.08);
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
     .ocr-doc {
       background: var(--bg);
       border: 1px solid var(--border);
@@ -774,9 +782,13 @@
       </div>
 
       <h2 style="margin-top:1rem">Campos a extraer</h2>
+      <p class="muted" style="margin-top:0" x-show="!textoOcr">
+        Sin texto OCR disponible: abra un comprobante (paso 3) para ver aquí la
+        coincidencia en vivo mientras edita Usar/regex.
+      </p>
       <table>
         <thead>
-          <tr><th>Campo</th><th>Usar</th><th>Expresión regular</th><th>Literal</th><th>Req.</th><th>Orden</th></tr>
+          <tr><th>Campo</th><th>Usar</th><th>Expresión regular</th><th>Literal</th><th>Req.</th><th>Orden</th><th>Texto OCR</th></tr>
         </thead>
         <tbody>
           <template x-for="campo in camposCatalogo" :key="campo">
@@ -806,6 +818,9 @@
               <td>
                 <input type="number" style="width:64px" x-model.number="perfilEdit.campos[campo].orden"
                        :disabled="!(perfilEdit.campos[campo] && perfilEdit.campos[campo].usar)" />
+              </td>
+              <td class="ocr-preview">
+                <code x-text="previewEdicion(campo)"></code>
               </td>
             </tr>
           </template>
@@ -1267,7 +1282,7 @@ function app() {
         this.nitValidado = j.nit_validado;
         this.nitMensaje = j.nit_mensaje;
         if (j.confianza_ocr != null) this.confianzaOcr = Number(j.confianza_ocr);
-        if (j.texto_ocr) this.textoOcr = j.texto_ocr;
+        if ('texto_ocr' in j) this.textoOcr = j.texto_ocr || '';
         if (j.paginas != null) this.paginas = j.paginas;
         if (j.perfil_id) {
           const p = this.perfiles.find(x => x.id === j.perfil_id);
@@ -1380,6 +1395,13 @@ function app() {
       if (!m) return '';
       const raw = String(m[0]).replace(/\s+/g, ' ').trim();
       return raw.length > 220 ? raw.slice(0, 220) + '…' : raw;
+    },
+
+    previewEdicion(campo) {
+      if (!this.perfilEdit || !this.textoOcr) return '—';
+      const cfg = this.perfilEdit.campos[campo];
+      if (!cfg || !cfg.usar) return '—';
+      return this.matchTextoOcr(cfg, this.textoOcr) || '—';
     },
 
     async reextraer() {
