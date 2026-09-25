@@ -170,3 +170,6 @@ def test_ui_expone_tipo_persona_y_nombres():
     assert '<details x-show="textoOcr" open>' in html
     assert "nombreTipoDoc" in html
     assert "Tipo documento" in html
+    assert "1 - Personas Naturales" in html
+    assert "2 - Personas Jurídicas" in html
+    assert "1 — Natural (nombres/apellidos)" not in html
