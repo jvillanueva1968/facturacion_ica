@@ -78,6 +78,8 @@ async def emit_stage(
     nit_validado: Optional[bool] = None,
     nit_mensaje: Optional[str] = None,
     confianza: Optional[float] = None,
+    texto_ocr: Optional[str] = None,
+    paginas: Optional[int] = None,
 ) -> None:
     base = dict(STAGE_EVENTS.get(stage, {"stage": stage, "status": "processing", "progress": 50}))
     event: Dict[str, Any] = dict(base)
@@ -93,4 +95,8 @@ async def emit_stage(
         event["nit_mensaje"] = nit_mensaje
     if confianza is not None:
         event["confianza"] = confianza
+    if texto_ocr:
+        event["texto_ocr"] = texto_ocr
+    if paginas is not None:
+        event["paginas"] = paginas
     await progress_hub.publish(task_id, event)

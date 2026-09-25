@@ -143,6 +143,8 @@ async def procesar_documento(
                 "ocr_done",
                 mensaje="OCR completado",
                 confianza=confianza,
+                texto_ocr=texto_ocr[:8000],
+                paginas=paginas,
             )
 
             await emit_stage(task_id, "llm_start", mensaje="Extrayendo datos con LLM…")
@@ -182,6 +184,9 @@ async def procesar_documento(
                 errores=[],
                 nit_validado=nit_result.get("valido"),
                 nit_mensaje=nit_result.get("mensaje"),
+                texto_ocr=texto_ocr[:8000],
+                confianza=confianza,
+                paginas=paginas,
             )
 
     except Exception as e:
