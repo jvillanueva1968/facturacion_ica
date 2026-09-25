@@ -8,7 +8,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 from app.config import get_settings
-from app.api import upload, facturar, validate, catalogos, ws
+from app.api import upload, facturar, validate, catalogos, ws, perfiles
 from app.core.deps import require_auth, require_viewer
 from app.core.rate_limit import install_rate_limit, limiter
 from app.core.security import ROLE_ADMIN, ROLE_OPERATOR, ROLE_VIEWER, VALID_ROLES, create_access_token, normalize_roles
@@ -49,6 +49,36 @@ sigma_client = SigmaClient()
 db_ready = False
 
 
+async def _migrar_columna_perfil_id() -> None:
+    """ALTER defensivo: la columna perfil_id no se crea con create_all si la tabla ya existe."""
+    async with engine.begin() as conn:
+        await conn.execute(text(
+            "ALTER TABLE comprobantes ADD COLUMN IF NOT EXISTS perfil_id VARCHAR(64)"
+        ))
+
+
+async def _seed_perfiles() -> None:
+    from app.db.session import SessionLocal
+    from app.db.repositories import PerfilRepo
+    from app.services.extraction import PERFILES_SEED
+
+    log = structlog.get_logger()
+    async with SessionLocal() as session:
+        repo = PerfilRepo(session)
+        if await repo.count() > 0:
+            return
+        for i, seed in enumerate(PERFILES_SEED):
+            await repo.create(
+                codigo=seed["codigo"],
+                nombre=seed["nombre"],
+                detect_keywords=seed["detect_keywords"],
+                campos=seed["campos"],
+                llm_respaldo=seed["llm_respaldo"],
+                es_default=(i == 0),
+            )
+        log.info("perfiles_seed_created", count=len(PERFILES_SEED))
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global db_ready
@@ -62,6 +92,13 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         db_ready = False
         logger.error("database_init_failed", error=str(e))
+
+    if db_ready:
+        try:
+            await _migrar_columna_perfil_id()
+            await _seed_perfiles()
+        except Exception as e:
+            logger.warning("perfiles_seed_failed", error=str(e))
 
     try:
         snri_available = await snri_client.validar_disponibilidad()
@@ -99,6 +136,7 @@ app.include_router(facturar.router, prefix="/api/v1", tags=["facturacion"])
 app.include_router(validate.router, prefix="/api/v1", tags=["validacion"])
 app.include_router(catalogos.router, prefix="/api/v1", tags=["catalogos"])
 app.include_router(ws.router, prefix="/api/v1", tags=["websocket"])
+app.include_router(perfiles.router, prefix="/api/v1", tags=["perfiles"])
 
 
 @app.post("/api/v1/auth/jwt", tags=["auth"])

@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, validator, model_validator, ConfigDict
-from typing import Optional, List, Literal
+from typing import Optional, List, Literal, Dict
 from datetime import date, datetime
 from decimal import Decimal
 from enum import Enum
@@ -267,6 +267,11 @@ class DatosExtraidos(BaseModel):
     banco: Optional[str] = None
     tipo_documento: Optional[str] = None
     numero_documento: Optional[str] = None
+    convenio: Optional[str] = None
+    ubicacion: Optional[str] = None
+    autenticacion: Optional[str] = None
+    perfil_codigo: Optional[str] = None
+    campos_perfil: Optional[dict] = None
 
     @model_validator(mode="after")
     def _normalizar_nit(self):
@@ -331,9 +336,47 @@ class ComprobanteOut(BaseModel):
     paginas: Optional[int] = None
     texto_ocr: Optional[str] = None
     datos_extraidos: Optional[dict] = None
+    perfil_id: Optional[str] = None
     nit_validado: Optional[bool] = None
     nit_mensaje: Optional[str] = None
     errores: Optional[list] = None
     created_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class CampoPerfilIn(BaseModel):
+    regex: Optional[str] = None
+    literal: Optional[str] = None
+    requerido: bool = False
+    orden: int = 99
+
+
+class PerfilExtraccionIn(BaseModel):
+    codigo: str
+    nombre: str
+    detect_keywords: List[str] = []
+    campos: Dict[str, CampoPerfilIn] = {}
+    llm_respaldo: bool = True
+    activo: bool = True
+    es_default: bool = False
+
+
+class PerfilExtraccionOut(BaseModel):
+    id: str
+    codigo: str
+    nombre: str
+    detect_keywords: List[str] = []
+    campos: dict = {}
+    llm_respaldo: bool = True
+    activo: bool = True
+    es_default: bool = False
+    user_sub: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ReextraerIn(BaseModel):
+    perfil_id: Optional[str] = None

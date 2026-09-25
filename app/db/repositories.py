@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.db.models import Comprobante, Factura, FacturaDetalle, AuditLog
+from app.db.models import Comprobante, Factura, FacturaDetalle, AuditLog, PerfilExtraccion
 
 
 def _dec(value: Any, default: Decimal = Decimal("0")) -> Decimal:
@@ -32,6 +32,7 @@ class ComprobanteRepo:
         mime_type: Optional[str] = None,
         file_size: Optional[int] = None,
         status: str = "processing",
+        perfil_id: Optional[str] = None,
     ) -> Comprobante:
         row = Comprobante(
             task_id=task_id,
@@ -39,6 +40,7 @@ class ComprobanteRepo:
             mime_type=mime_type,
             file_size=file_size,
             status=status,
+            perfil_id=perfil_id,
             errores=[],
         )
         self.session.add(row)
@@ -79,12 +81,15 @@ class ComprobanteRepo:
         errores: Optional[list] = None,
         nit_validado: Optional[bool] = None,
         nit_mensaje: Optional[str] = None,
+        perfil_id: Optional[str] = None,
     ) -> Optional[Comprobante]:
         row = await self.get_by_task_id(task_id)
         if not row:
             return None
         row.datos_extraidos = datos
         row.status = status
+        if perfil_id is not None:
+            row.perfil_id = perfil_id
         if errores is not None:
             row.errores = errores
         if nit_validado is not None:
@@ -275,3 +280,78 @@ class AuditRepo:
         self.session.add(row)
         await self.session.commit()
         return row
+
+
+class PerfilRepo:
+    def __init__(self, session: AsyncSession):
+        self.session = session
+
+    async def list_all(self, *, solo_activos: bool = False) -> list[PerfilExtraccion]:
+        stmt = select(PerfilExtraccion).order_by(PerfilExtraccion.nombre)
+        if solo_activos:
+            stmt = stmt.where(PerfilExtraccion.activo.is_(True))
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
+
+    async def get(self, perfil_id: str) -> Optional[PerfilExtraccion]:
+        result = await self.session.execute(
+            select(PerfilExtraccion).where(PerfilExtraccion.id == perfil_id)
+        )
+        return result.scalar_one_or_none()
+
+    async def get_by_codigo(self, codigo: str) -> Optional[PerfilExtraccion]:
+        result = await self.session.execute(
+            select(PerfilExtraccion).where(PerfilExtraccion.codigo == codigo)
+        )
+        return result.scalar_one_or_none()
+
+    async def create(
+        self,
+        *,
+        codigo: str,
+        nombre: str,
+        detect_keywords: list,
+        campos: dict,
+        llm_respaldo: bool = True,
+        activo: bool = True,
+        es_default: bool = False,
+        user_sub: Optional[str] = None,
+    ) -> PerfilExtraccion:
+        row = PerfilExtraccion(
+            codigo=codigo,
+            nombre=nombre,
+            detect_keywords=detect_keywords,
+            campos=campos,
+            llm_respaldo=llm_respaldo,
+            activo=activo,
+            es_default=es_default,
+            user_sub=user_sub,
+        )
+        self.session.add(row)
+        await self.session.commit()
+        await self.session.refresh(row)
+        return row
+
+    async def update(self, perfil_id: str, **campos) -> Optional[PerfilExtraccion]:
+        row = await self.get(perfil_id)
+        if not row:
+            return None
+        for k, v in campos.items():
+            if hasattr(row, k):
+                setattr(row, k, v)
+        await self.session.commit()
+        await self.session.refresh(row)
+        return row
+
+    async def delete(self, perfil_id: str) -> bool:
+        row = await self.get(perfil_id)
+        if not row:
+            return False
+        await self.session.delete(row)
+        await self.session.commit()
+        return True
+
+    async def count(self) -> int:
+        from sqlalchemy import func
+        result = await self.session.execute(select(func.count(PerfilExtraccion.id)))
+        return int(result.scalar_one())

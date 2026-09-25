@@ -40,6 +40,7 @@ class Comprobante(Base):
     paginas: Mapped[Optional[int]] = mapped_column(Integer)
     texto_ocr: Mapped[Optional[str]] = mapped_column(Text)
     datos_extraidos: Mapped[Optional[dict]] = mapped_column(JSON)
+    perfil_id: Mapped[Optional[str]] = mapped_column(String(64), index=True)
     nit_validado: Mapped[Optional[bool]] = mapped_column(Boolean)
     nit_mensaje: Mapped[Optional[str]] = mapped_column(Text)
     errores: Mapped[Optional[list]] = mapped_column(JSON, default=list)
@@ -134,5 +135,23 @@ class CatalogoCache(Base):
     tipo: Mapped[str] = mapped_column(String(64), unique=True, index=True)
     payload: Mapped[dict] = mapped_column(JSON)
     fetched_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
+class PerfilExtraccion(Base):
+    __tablename__ = "perfiles_extraccion"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    codigo: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    nombre: Mapped[str] = mapped_column(String(128))
+    activo: Mapped[bool] = mapped_column(Boolean, default=True)
+    es_default: Mapped[bool] = mapped_column(Boolean, default=False)
+    detect_keywords: Mapped[list] = mapped_column(JSON, default=list)
+    campos: Mapped[dict] = mapped_column(JSON, default=dict)
+    llm_respaldo: Mapped[bool] = mapped_column(Boolean, default=True)
+    user_sub: Mapped[Optional[str]] = mapped_column(String(128))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )

@@ -99,3 +99,22 @@ CREATE TABLE IF NOT EXISTS catalogos_cache (
 );
 
 CREATE INDEX IF NOT EXISTS ix_catalogos_cache_tipo ON catalogos_cache (tipo);
+
+CREATE TABLE IF NOT EXISTS perfiles_extraccion (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    codigo VARCHAR(64) UNIQUE NOT NULL,
+    nombre VARCHAR(128) NOT NULL,
+    activo BOOLEAN NOT NULL DEFAULT TRUE,
+    es_default BOOLEAN NOT NULL DEFAULT FALSE,
+    detect_keywords JSONB DEFAULT '[]'::jsonb,
+    campos JSONB DEFAULT '{}'::jsonb,
+    llm_respaldo BOOLEAN NOT NULL DEFAULT TRUE,
+    user_sub VARCHAR(128),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS ix_perfiles_extraccion_codigo ON perfiles_extraccion (codigo);
+
+-- Columna de trazabilidad: perfil usado en cada comprobante
+ALTER TABLE comprobantes ADD COLUMN IF NOT EXISTS perfil_id VARCHAR(64);
