@@ -330,3 +330,35 @@ def test_ui_envia_perfil_id_en_upload():
     assert "fd.append('perfil_id'" in html
     assert "reextrayendo" in html
     assert "guardandoPerfil" in html
+
+def test_ui_bindings_referencian_estado_existente():
+    """Ningun binding raiz (x-model/x-for/x-show) puede usar un identificador inexistente en el JS."""
+    import re as _re
+
+    from fastapi.testclient import TestClient
+    from app.main import app
+
+    html = TestClient(app).get("/").text
+    js = _re.search(r"(?s)<script>(.*)</script>", html).group(1)
+
+    props = set(_re.findall(r"(?m)^\s{4}([a-zA-Z_]\w*)\s*[:\(]", js))
+    props |= set(_re.findall(r"(?m)^\s{4}get\s+([a-zA-Z_]\w*)", js))
+    props |= {"status", "step", "config", "dragging", "error"}
+
+    # variables declaradas por x-for en el propio HTML
+    scope_vars = set(_re.findall(r'x-for="\(?([\w,\s]+?)\)?\s+(?:in|of)\s+', html))
+    declared = set()
+    for v in scope_vars:
+        declared |= {t.strip() for t in v.split(",") if t.strip()}
+
+    roots = set()
+    for m in _re.finditer(r'x-model="([\w]+)', html):
+        roots.add(m.group(1))
+    for m in _re.finditer(r'x-for="\w[\w,]*\s+in\s+([\w]+)', html):
+        roots.add(m.group(1))
+    for m in _re.finditer(r'x-show="([\w]+)(?:\s|&)', html):
+        roots.add(m.group(1))
+
+    roots -= declared
+    missing = sorted(r for r in roots if r not in props)
+    assert not missing, f"Bindings con identificador inexistente: {missing}"
