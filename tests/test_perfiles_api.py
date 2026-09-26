@@ -416,3 +416,53 @@ def test_ui_fecha_usa_fecha_transaccion():
     assert "status==='processing'" in html
     assert "previewEdicion(campo)" in html
     assert "'texto_ocr' in j" in html
+
+def test_forma_pago_invalida_no_truena_el_modelo():
+    from datetime import date
+    from decimal import Decimal
+
+    from app.models.schemas import DatosExtraidos, FormaPago
+
+    kwargs = dict(
+        forma_pago="SNRI",
+        servicios=[{"descripcion": "S", "valor": "1000"}],
+        nit_pagador="8001972688",
+        fecha_transaccion=date(2026, 9, 18),
+        valor_total=Decimal("1000"),
+        numero_referencia="1",
+    )
+    d = DatosExtraidos(**kwargs)
+    assert d.forma_pago == FormaPago.CONSIGNACION
+
+    kwargs["forma_pago"] = " datafono "
+    d2 = DatosExtraidos(**kwargs)
+    assert d2.forma_pago == FormaPago.DATAFONO
+
+
+def test_fusionar_no_aplica_forma_pago_invalida():
+    from datetime import date
+    from decimal import Decimal
+
+    from app.api.upload import _fusionar_datos
+    from app.models.schemas import DatosExtraidos, FormaPago
+    from app.services.extraction import PerfilExtraccionData
+
+    base = DatosExtraidos(
+        forma_pago="DATAFONO",
+        servicios=[{"descripcion": "S", "valor": "1000"}],
+        nit_pagador="8001972688",
+        dv_pagador="4",
+        fecha_transaccion=date(2026, 9, 18),
+        valor_total=Decimal("1000"),
+        numero_referencia="1",
+    )
+    perfil = PerfilExtraccionData(
+        codigo="redeban-bancolombia",
+        nombre="Redeban",
+        campos={"forma_pago": {"literal": "SNRI", "requerido": False, "orden": 6}},
+    )
+    out = _fusionar_datos(base, {"forma_pago": "SNRI"}, perfil)
+    assert out.forma_pago == FormaPago.DATAFONO
+
+    out2 = _fusionar_datos(base, {"forma_pago": "PSE"}, perfil)
+    assert out2.forma_pago == FormaPago.PSE

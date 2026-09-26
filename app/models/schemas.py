@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, validator, model_validator, ConfigDict
+from pydantic import BaseModel, Field, validator, model_validator, field_validator, ConfigDict
 from typing import Optional, List, Literal, Dict
 from datetime import date, datetime
 from decimal import Decimal
@@ -272,6 +272,15 @@ class DatosExtraidos(BaseModel):
     autenticacion: Optional[str] = None
     perfil_codigo: Optional[str] = None
     campos_perfil: Optional[dict] = None
+
+    @field_validator("forma_pago", mode="before")
+    @classmethod
+    def _forma_pago_catalogo(cls, v):
+        if isinstance(v, FormaPago):
+            return v.value
+        s = str(v or "").strip().upper()
+        validas = {m.value for m in FormaPago}
+        return s if s in validas else "CONSIGNACION"
 
     @model_validator(mode="after")
     def _normalizar_nit(self):

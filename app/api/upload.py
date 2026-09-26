@@ -21,7 +21,13 @@ from fastapi import Request
 from datetime import date
 from decimal import Decimal, InvalidOperation
 
-from app.models.schemas import UploadResponse, DatosExtraidos, ComprobanteOut, ReextraerIn
+from app.models.schemas import (
+    UploadResponse,
+    DatosExtraidos,
+    ComprobanteOut,
+    ReextraerIn,
+    FormaPago,
+)
 from app.core.deps import require_operator, require_viewer
 from app.core.progress import emit_stage, progress_hub
 from app.core.rate_limit import limiter
@@ -124,6 +130,13 @@ def _fusionar_datos(
                 dump["fecha_transaccion"] = date.fromisoformat(valor)
             except ValueError:
                 pass
+            continue
+        if campo == "forma_pago":
+            v_fp = str(valor).strip().upper()
+            if v_fp in {m.value for m in FormaPago}:
+                dump["forma_pago"] = v_fp
+            else:
+                logger.warning("forma_pago_ignorada", valor=valor, motivo="fuera_de_catalogo")
             continue
         if campo == "valor_total":
             try:
