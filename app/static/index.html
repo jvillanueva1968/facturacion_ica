@@ -273,6 +273,34 @@
       color: var(--text);
       border: 1px solid var(--border);
     }
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 0.75rem;
+      margin: 1rem 0;
+    }
+    .kpi {
+      border: 1px solid var(--border, #ddd);
+      border-radius: 8px;
+      padding: 0.75rem 0.5rem;
+      text-align: center;
+      background: var(--card, #fff);
+    }
+    .kpi-num { display: block; font-size: 1.5rem; font-weight: 700; }
+    .kpi-lbl { font-size: 0.72rem; color: #666; }
+    .barra {
+      background: #e8e8e8;
+      border-radius: 4px;
+      height: 10px;
+      overflow: hidden;
+      min-width: 100px;
+    }
+    .barra span {
+      display: block;
+      height: 100%;
+      background: #2563eb;
+      border-radius: 4px;
+    }
   </style>
 </head>
 <body x-data="app()" x-init="init()">
@@ -281,12 +309,14 @@
   <div style="display:flex; gap:0.75rem; align-items:center">
     <button class="secondary" x-show="esAdmin" @click="config = !config"
             x-text="config ? '← Volver' : '⚙ Configuración'" style="font-size:0.8rem; padding:0.4rem 0.8rem"></button>
+    <button class="secondary" @click="toggleMetricas()"
+            x-text="metricas ? '← Volver' : '📊 Métricas'" style="font-size:0.8rem; padding:0.4rem 0.8rem"></button>
     <div class="health" :class="healthOk ? 'ok' : 'bad'" x-text="healthOk ? 'API OK' : 'API caída'"></div>
   </div>
 </header>
 
 <main>
-  <div class="steps" x-show="!config">
+  <div class="steps" x-show="!config && !metricas">
     <span class="step" :class="{active: step===1, done: step>1}">1. Identificación</span>
     <span class="step" :class="{active: step===2, done: step>2}">2. Cargar comprobante</span>
     <span class="step" :class="{active: step===3, done: step>3}">3. Revisar datos</span>
@@ -295,7 +325,7 @@
   </div>
 
   <!-- STEP 1: Identificación (antes del upload — el comprobante no trae NIT) -->
-  <section class="card" x-show="!config && step===1">
+  <section class="card" x-show="!config && !metricas && step===1">
     <h2>Identificación del pagador</h2>
     <p class="muted" style="margin-top:0">
       El comprobante de pago <strong>no incluye NIT/identificación</strong>.
@@ -369,7 +399,7 @@
   </section>
 
   <!-- STEP 2: Upload -->
-  <section class="card" x-show="!config && step===2">
+  <section class="card" x-show="!config && !metricas && step===2">
     <h2>Cargar comprobante de pago</h2>
     <p class="muted" style="margin-top:0">
       Pagador: <strong x-text="(form.nit_pagador || '—') + (form.dv_pagador ? '-' + form.dv_pagador : '')"></strong>
@@ -401,7 +431,7 @@
   </section>
 
   <!-- STEP 3: Review -->
-  <section class="card" x-show="!config && step===3">
+  <section class="card" x-show="!config && !metricas && step===3">
     <h2>Revisar datos extraídos
       <span class="badge info" x-show="status==='processing'">Procesando…</span>
       <span class="badge ok" x-show="status==='completed'">Completado</span>
@@ -639,7 +669,7 @@
   </div>
 
   <!-- STEP 4: Facturar -->
-  <section class="card" x-show="!config && step===4">
+  <section class="card" x-show="!config && !metricas && step===4">
     <h2>Confirmar y facturar</h2>
     <div class="grid">
       <label>NIT-DV <input :value="form.nit_pagador + '-' + form.dv_pagador" readonly /></label>
@@ -669,7 +699,7 @@
   </section>
 
   <!-- STEP 5: Result -->
-  <section class="card" x-show="!config && step===5">
+  <section class="card" x-show="!config && !metricas && step===5">
     <h2>Resultado</h2>
     <div class="msg" :class="facturaOk ? 'ok' : 'err'"
          x-text="facturaOk ? 'Factura emitida correctamente' : 'Factura con errores'">
@@ -837,6 +867,90 @@
   </section>
 </main>
 
+<!-- MÉTRICAS (dashboard) -->
+<section class="card" x-show="metricas" style="margin-top:1rem">
+  <h2 style="display:flex; justify-content:space-between; align-items:center; gap:1rem">
+    📊 Métricas
+    <button class="secondary" @click="metricas=false" style="font-size:0.8rem; padding:0.4rem 0.8rem">← Volver</button>
+  </h2>
+  <div class="msg err" x-show="metricasError" x-text="metricasError"></div>
+  <p class="muted" x-show="!md && !metricasError">Cargando métricas…</p>
+  <template x-if="md">
+    <div>
+      <div class="kpi-grid">
+        <div class="kpi">
+          <span class="kpi-num" x-text="md.totales.comprobantes"></span>
+          <span class="kpi-lbl">Comprobantes · hoy <span x-text="md.totales.hoy"></span></span>
+        </div>
+        <div class="kpi">
+          <span class="kpi-num" x-text="(md.totales.tasa_exito_pct ?? '—') + '%'"></span>
+          <span class="kpi-lbl">Éxito <span x-text="md.totales.exitosos + ' ok / ' + md.totales.fallidos + ' fallos'"></span></span>
+        </div>
+        <div class="kpi">
+          <span class="kpi-num" x-text="md.totales.facturas"></span>
+          <span class="kpi-lbl">Facturas · hoy <span x-text="md.totales.facturas_hoy"></span></span>
+        </div>
+        <div class="kpi">
+          <span class="kpi-num" x-text="md.calidad.confianza_promedio + '%'"></span>
+          <span class="kpi-lbl">Confianza OCR</span>
+        </div>
+        <div class="kpi">
+          <span class="kpi-num" x-text="md.calidad.tiempo_promedio_seg + 's'"></span>
+          <span class="kpi-lbl">Tiempo promedio</span>
+        </div>
+        <div class="kpi">
+          <span class="kpi-num" x-text="md.totales.procesando"></span>
+          <span class="kpi-lbl">En proceso</span>
+        </div>
+      </div>
+
+      <h3>Por perfil de extracción</h3>
+      <table>
+        <thead><tr><th>Perfil</th><th style="width:6rem">Comprobantes</th><th style="width:40%">Participación</th></tr></thead>
+        <tbody>
+          <template x-for="p in md.por_perfil" :key="p.codigo">
+            <tr>
+              <td x-text="p.nombre + ' (' + p.codigo + ')'"></td>
+              <td x-text="p.total"></td>
+              <td>
+                <div class="barra"><span :style="'width:' + barraPct(p.total, md.totales.comprobantes) + '%'"></span></div>
+              </td>
+            </tr>
+          </template>
+          <tr x-show="!md.por_perfil.length"><td colspan="3" class="muted">Sin comprobantes todavía</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Últimos 14 días</h3>
+      <table>
+        <thead><tr><th>Fecha</th><th>Total</th><th>Éxito</th><th style="width:40%">Actividad</th></tr></thead>
+        <tbody>
+          <template x-for="d in md.por_dia" :key="d.fecha">
+            <tr>
+              <td x-text="fmtFecha(d.fecha)"></td>
+              <td x-text="d.total"></td>
+              <td x-text="d.exitosos"></td>
+              <td>
+                <div class="barra"><span :style="'width:' + barraPct(d.total, maxDia()) + '%'"></span></div>
+              </td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+
+      <h3 x-show="md.campos_faltantes.length">Campos requeridos faltantes (30 días)</h3>
+      <table x-show="md.campos_faltantes.length">
+        <thead><tr><th>Campo</th><th>Faltó en</th></tr></thead>
+        <tbody>
+          <template x-for="f in md.campos_faltantes" :key="f.campo">
+            <tr><td x-text="f.campo"></td><td x-text="f.veces + ' comprobantes'"></td></tr>
+          </template>
+        </tbody>
+      </table>
+    </div>
+  </template>
+</section>
+
 <script>
 function app() {
   return {
@@ -876,6 +990,9 @@ function app() {
     imgScale: 1,
     jwt: localStorage.getItem('ica_jwt') || '',
     config: false,
+    metricas: false,
+    md: null,
+    metricasError: '',
     esAdmin: false,
     perfiles: [],
     camposCatalogo: [],
@@ -1047,6 +1164,33 @@ function app() {
         if (!r.ok) return;
         this.perfiles = await r.json();
       } catch { /* ignore */ }
+    },
+
+    toggleMetricas() {
+      this.metricas = !this.metricas;
+      this.config = false;
+      if (this.metricas) this.cargarMetricas();
+    },
+
+    async cargarMetricas() {
+      this.metricasError = '';
+      try {
+        const r = await fetch('/api/v1/metricas', { headers: this.authHeaders() });
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        this.md = await r.json();
+      } catch (e) {
+        this.metricasError = 'No se pudieron cargar las métricas: ' + (e.message || e);
+      }
+    },
+
+    barraPct(v, max) {
+      if (!max) return 0;
+      return Math.min(100, Math.round(100 * (v || 0) / max));
+    },
+
+    maxDia() {
+      if (!this.md?.por_dia?.length) return 0;
+      return Math.max(...this.md.por_dia.map(d => d.total || 0));
     },
 
     async cargarCatalogo() {

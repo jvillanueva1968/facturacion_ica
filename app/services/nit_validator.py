@@ -1,5 +1,7 @@
 from typing import Optional
 
+from app.core.metrics import observar_snri
+
 PESOS_DIAN = [3, 7, 13, 17, 19, 23, 29, 37, 41, 43, 47, 53, 59, 67, 71]
 
 
@@ -76,6 +78,7 @@ async def validar_nit_snri(nit: str, dv: str, snri_client=None) -> dict:
                     "datos": None
                 }
             _nit_cache[cache_key] = resultado
+            observar_snri("ok")
         else:
             # sin token SNRI: no cachear (habrá token en el siguiente intento)
             resultado = {
@@ -87,6 +90,7 @@ async def validar_nit_snri(nit: str, dv: str, snri_client=None) -> dict:
     except Exception as e:
         resultado = {"valido": False, "mensaje": f"Error validando: {str(e)}", "datos": None}
         _nit_cache[cache_key] = resultado
+        observar_snri("error")
 
     return resultado
 

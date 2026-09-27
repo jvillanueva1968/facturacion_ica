@@ -5,8 +5,9 @@ import httpx
 from decimal import Decimal, InvalidOperation
 from typing import Optional
 from pydantic import ValidationError
-from app.models.schemas import DatosExtraidos, FormaPago
+from app.models.schemas import DatosExtraidos
 from app.config import get_settings
+from app.core.metrics import observar_llm
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -154,12 +155,18 @@ class LLMService:
             ocr_text=ocr_text[:8000],
         )
 
-        if self.provider == "ollama":
-            return await self._call_ollama(prompt)
-        elif self.provider == "openrouter":
-            return await self._call_openrouter(prompt)
-        else:
-            raise ValueError(f"Proveedor LLM no soportado: {self.provider}")
+        try:
+            if self.provider == "ollama":
+                datos = await self._call_ollama(prompt)
+            elif self.provider == "openrouter":
+                datos = await self._call_openrouter(prompt)
+            else:
+                raise ValueError(f"Proveedor LLM no soportado: {self.provider}")
+        except Exception:
+            observar_llm("error")
+            raise
+        observar_llm("ok")
+        return datos
 
     async def _call_ollama(self, prompt: str) -> DatosExtraidos:
         async with httpx.AsyncClient(timeout=60) as client:

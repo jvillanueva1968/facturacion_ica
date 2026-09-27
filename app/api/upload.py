@@ -20,6 +20,9 @@ from fastapi import Request
 
 from datetime import date
 from decimal import Decimal, InvalidOperation
+import time
+
+from app.core.metrics import observar_extraccion, observar_procesamiento
 
 from app.models.schemas import (
     UploadResponse,
@@ -28,7 +31,7 @@ from app.models.schemas import (
     ReextraerIn,
     FormaPago,
 )
-from app.core.deps import require_operator, require_viewer
+from app.core.deps import require_operator
 from app.core.progress import emit_stage, progress_hub
 from app.core.rate_limit import limiter
 from app.services.ocr_service import OCRService
@@ -239,6 +242,8 @@ async def procesar_documento(
     perfil_id: Optional[str] = None,
 ):
     try:
+        t0 = time.monotonic()
+        perfil = None
         logger.info("iniciando_procesamiento", task_id=task_id, nit_pref=nit_pref)
         await emit_stage(task_id, "ocr_start", mensaje="Ejecutando OCR…")
 
@@ -261,6 +266,8 @@ async def procesar_documento(
 
             perfiles = await _cargar_perfiles(session)
             perfil = _resolver_perfil(perfiles, perfil_id, texto_ocr)
+            if perfil:
+                observar_extraccion(perfil.codigo)
             campos: dict = {}
             if perfil:
                 campos = extraer_campos(texto_ocr, perfil)
@@ -344,9 +351,17 @@ async def procesar_documento(
                 confianza=confianza,
                 paginas=paginas,
             )
+            observar_procesamiento(
+                "completed", time.monotonic() - t0,
+                perfil.codigo if perfil else "ninguno",
+            )
 
     except Exception as e:
         logger.error("error_procesamiento", task_id=task_id, error=str(e))
+        observar_procesamiento(
+            "failed", time.monotonic() - t0,
+            perfil.codigo if perfil else "ninguno",
+        )
         await emit_stage(task_id, "failed", mensaje=str(e), errores=[str(e)])
         try:
             async with SessionLocal() as session:

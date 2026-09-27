@@ -54,7 +54,7 @@ jobs:
             aiofiles httpx pytesseract opencv-python-headless pillow pdf2image pypdf \
             zeep requests-pkcs12 oracledb asyncpg "sqlalchemy[asyncio]" redis \
             structlog python-dotenv tenacity "python-jose[cryptography]" \
-            "passlib[bcrypt]" slowapi greenlet \
+            "passlib[bcrypt]" slowapi greenlet prometheus-fastapi-instrumentator \
             pytest pytest-asyncio ruff
 
       - name: Lint (ruff)
