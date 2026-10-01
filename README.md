@@ -7,6 +7,26 @@
 - Certificado `.p12` del ICA (para pruebas reales SNRI)
 - Credenciales `A_InicioTransaccion` del ICA
 
+### OCR local (solo si corres la app/tests fuera de Docker)
+
+En Docker y CI los binarios ya están en la imagen (`docker/Dockerfile`, `.github/workflows/ci.yml`).
+Para correr `OCRService` o `tests/test_ocr_service.py` en Windows sin contenedor:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\setup_ocr_windows.ps1
+```
+
+Instala/verifica:
+
+| Componente | Uso | Fuente |
+|------------|-----|--------|
+| Tesseract 5 + `spa.traineddata` | OCR de imágenes | `winget install UB-Mannheim.TesseractOCR` (el instalador solo trae `eng`; el script descarga `spa`) |
+| Poppler (`pdftoppm`) | Rasterizar PDF escaneados a 300 dpi | `winget install oschwartz10612.Poppler` |
+| `pypdf` | Atajo para PDF con capa de texto (confianza 100) | `pip install pypdf` |
+
+Si falta cualquiera de los tres, `extract_text` revienta con `TesseractNotFoundError`,
+`PDFInfoNotInstalledError` o `ModuleNotFoundError: pypdf`.
+
 ---
 
 ## 1. Configuración Inicial
@@ -237,6 +257,9 @@ docker-compose exec api env | grep SNRI
 | `snri_wsdl_loaded: false` | Verificar `wsdl/WS_FACTURACION.wsdl` existe |
 | Error certificado `.p12` | Verificar password en `.env` y archivo en `certs/` |
 | Ollama no responde | `docker-compose restart ollama` y esperar healthcheck |
+| `TesseractNotFoundError` | Fuera de Docker: `scripts\setup_ocr_windows.ps1` (o instalar Tesseract y ponerlo en el PATH) |
+| `PDFInfoNotInstalledError` | Falta Poppler: `winget install oschwartz10612.Poppler` |
+| `ModuleNotFoundError: pypdf` | `pip install pypdf` |
 | Puerto 8000 ocupado | Cambiar en `docker-compose.yml` |
 | BD no conecta | `docker-compose restart db` y verificar healthcheck |
 
