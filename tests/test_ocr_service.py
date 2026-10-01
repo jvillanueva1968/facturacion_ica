@@ -137,6 +137,38 @@ def test_hallazgos_preliminares_vacio():
     assert hallazgos_preliminares("sin datos utiles") == "(ninguno)"
 
 
+def test_hallazgos_no_confunde_sfnv03_con_valor():
+    from app.services.llm_service import hallazgos_preliminares
+
+    texto = "TOTAL (COP):\nVER: SFNV03_CA3\n$11.450\n"
+    h = hallazgos_preliminares(texto)
+    assert "valor_total=11450" in h
+    assert "valor_total=3" not in h
+
+
+def test_hallazgos_fecha_con_mes_en_texto():
+    from app.services.llm_service import hallazgos_preliminares
+
+    texto = "Monto: $8.800,00 Fecha SEP 18 2026 - 09:22:47\n"
+    h = hallazgos_preliminares(texto)
+    assert "fecha_transaccion=2026-09-18" in h
+    assert "valor_total=8800" in h
+
+
+def test_hallazgos_ref_corta_redeban():
+    from app.services.llm_service import hallazgos_preliminares
+
+    texto = "Pago aprobado\nREF:000000000001045048358\n"
+    h = hallazgos_preliminares(texto)
+    assert "numero_referencia=000000000001045048358" in h
+
+
+def test_hallazgos_no_falso_positivo_en_palabras_con_ref():
+    from app.services.llm_service import hallazgos_preliminares
+
+    assert hallazgos_preliminares("CACHE REFRESH OK 12345") == "(ninguno)"
+
+
 def test_normalizar_valor():
     from app.services.llm_service import normalizar_valor
 

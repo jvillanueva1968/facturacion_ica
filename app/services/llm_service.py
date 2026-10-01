@@ -8,6 +8,7 @@ from pydantic import ValidationError
 from app.models.schemas import DatosExtraidos
 from app.config import get_settings
 from app.core.metrics import observar_llm
+from app.services.extraction import MESES
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -47,18 +48,26 @@ TEXTO OCR:
 _RE_NIT = re.compile(r"NIT\D{0,25}(\d{6,10})(?:\s*[-–]\s*(\d))?", re.I)
 _RE_FECHA = re.compile(r"(\d{2})[/\-.](\d{2})[/\-.](\d{4})")
 _VALOR_NUM = r"(\$?\s*\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?|\d+(?:[.,]\d{2})?)"
+# El lookbehind (?<![A-Za-z0-9]) evita capturar dígitos pegados a letras
+# (bug: "VER: SFNV03_CA3" hacía que \bTOTAL\b... capturara "03" → valor_total=3).
 _RE_VALORES = (
-    re.compile(rf"VALOR\s+TOTAL\D{{0,20}}{_VALOR_NUM}", re.I),
-    re.compile(rf"TOTAL\s+A\s+PAGAR\D{{0,20}}{_VALOR_NUM}", re.I),
-    re.compile(rf"(?<!SUB)(?<!IVA\s)\bTOTAL\b\D{{0,20}}{_VALOR_NUM}", re.I),
+    re.compile(rf"VALOR\s+TOTAL\D{{0,40}}(?<![A-Za-z0-9]){_VALOR_NUM}", re.I),
+    re.compile(rf"TOTAL\s+A\s+PAGAR\D{{0,40}}(?<![A-Za-z0-9]){_VALOR_NUM}", re.I),
+    re.compile(rf"(?<!SUB)(?<!IVA\s)\bTOTAL\b\D{{0,40}}(?<![A-Za-z0-9]){_VALOR_NUM}", re.I),
     re.compile(rf"\$\s*({_VALOR_NUM.lstrip('(').rstrip(')')})"),
 )
 _RE_REF = re.compile(
-    r"(?:REFERENCIA|CONSIGNACI[OÓ]N|TRANSFERENCIA|N[ÚU]MERO(?:\s+DE)?\s+(?:OPERACI[OÓ]N|TRANSACCI[OÓ]N))"
-    r"\s*[:\-]?\s*([A-Z0-9][A-Z0-9\-]{3,19})",
+    r"(?:REFERENCIA|REF\s*[:\-]|CONSIGNACI[OÓ]N|TRANSFERENCIA|N[ÚU]MERO(?:\s+DE)?\s+(?:OPERACI[OÓ]N|TRANSACCI[OÓ]N))"
+    r"\s*[:\-]?\s*([A-Z0-9][A-Z0-9\-]{3,29})",
     re.I,
 )
 _RE_FECHA_ISO = re.compile(r"\b(\d{4}-\d{2}-\d{2})\b")
+# Fechas tipo "SEP 17 2026" (Wompi/Redeban) → mes en inglés/español abreviado
+_RE_FECHA_MES = re.compile(
+    r"\b(ENE|JAN|FEB|MAR|ABR|APR|MAY|JUN|JUL|AGO|AUG|SEP|OCT|NOV|DIC|DEC)"
+    r"\s+(\d{1,2}),?\s+(\d{4})\b",
+    re.I,
+)
 
 
 def normalizar_valor(raw) -> str:
@@ -114,6 +123,14 @@ def hallazgos_preliminares(ocr_text: str) -> str:
             hints.append(f"fecha_transaccion={m.group(1)}")
         else:
             hints.append(f"fecha_transaccion={m.group(3)}-{m.group(2)}-{m.group(1)}")
+    else:
+        m = _RE_FECHA_MES.search(ocr_text)
+        if m:
+            mes = MESES.get(m.group(1).upper())
+            if mes:
+                hints.append(
+                    f"fecha_transaccion={int(m.group(3)):04d}-{mes:02d}-{int(m.group(2)):02d}"
+                )
     v = _extraer_valor(ocr_text)
     if v:
         hints.append(f"valor_total={v}")
