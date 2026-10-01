@@ -14,6 +14,8 @@ services:
       - ../tests:/app/tests
       - ./uploads:/app/uploads
       - ../certs:/app/certs:ro
+      - paddle-models:/home/appuser/.paddlex
+      - paddle-hf-cache:/home/appuser/.cache/huggingface
     environment:
       - ENVIRONMENT=development
       - DATABASE_URL=postgresql+asyncpg://postgres:postgres@db:5432/facturacion
@@ -152,6 +154,8 @@ volumes:
   redis-data:
   ollama-data:
   minio-data:
+  paddle-models:
+  paddle-hf-cache:
 
 networks:
   facturacion-net:

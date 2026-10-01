@@ -35,6 +35,7 @@ from app.core.deps import require_operator
 from app.core.progress import emit_stage, progress_hub
 from app.core.rate_limit import limiter
 from app.services.ocr_service import OCRService
+from app.services.paddle_ocr_service import PaddleOCRService
 from app.services.llm_service import LLMService
 from app.services.nit_validator import validar_nit_snri, normalizar_nit_dv
 from app.services.snri_client import SNRIClient
@@ -60,6 +61,34 @@ ocr_service = OCRService(
 )
 llm_service = LLMService()
 snri_client = SNRIClient()
+
+MOTORES_OCR = ("tesseract", "paddle")
+_paddle_service: PaddleOCRService | None = None
+
+
+def _paddle_disponible() -> bool:
+    import importlib.util
+
+    return importlib.util.find_spec("paddleocr") is not None
+
+
+def _servicio_ocr(motor: str | None) -> tuple[OCRService, str]:
+    """Resuelve el motor OCR pedido en el formulario (default: tesseract)."""
+    nombre = (motor or "").strip().lower() or "tesseract"
+    if nombre not in MOTORES_OCR:
+        raise HTTPException(
+            400, f"Motor OCR inválido: {nombre}. Opciones: {', '.join(MOTORES_OCR)}"
+        )
+    if nombre == "tesseract":
+        return ocr_service, "tesseract"
+    if not _paddle_disponible():
+        raise HTTPException(
+            400, "Motor paddle seleccionado pero paddleocr no está instalado en este entorno"
+        )
+    global _paddle_service
+    if _paddle_service is None:
+        _paddle_service = PaddleOCRService(lang="es")
+    return _paddle_service, "paddle"
 
 
 async def _cargar_perfiles(session) -> list[PerfilExtraccionData]:
@@ -165,12 +194,15 @@ async def upload_comprobante(
     nit_pagador: Optional[str] = Form(default=None),
     dv_pagador: Optional[str] = Form(default=None),
     perfil_id: Optional[str] = Form(default=None),
+    motor_ocr: str | None = Form(default=None),
     db: AsyncSession = Depends(get_db),
     request: Request = None,
     user: dict = Depends(require_operator),
 ):
     if file.content_type not in settings.allowed_mimes:
         raise HTTPException(400, f"Tipo de archivo no permitido: {file.content_type}")
+
+    motor = _servicio_ocr(motor_ocr)[1]
 
     content = await file.read()
     if len(content) > settings.max_file_size:
@@ -201,7 +233,7 @@ async def upload_comprobante(
     )
 
     background_tasks.add_task(
-        procesar_documento, task_id, file_path, nit_pref, dv_pref, perfil_id
+        procesar_documento, task_id, file_path, nit_pref, dv_pref, perfil_id, motor
     )
 
     logger.info(
@@ -210,6 +242,7 @@ async def upload_comprobante(
         filename=file.filename,
         size=len(content),
         nit_pref=nit_pref,
+        motor=motor,
     )
     await emit_stage(task_id, "received", mensaje="Archivo recibido, procesando...")
 
@@ -240,25 +273,35 @@ async def procesar_documento(
     nit_pref: Optional[str] = None,
     dv_pref: Optional[str] = None,
     perfil_id: Optional[str] = None,
+    motor: str = "tesseract",
 ):
     try:
         t0 = time.monotonic()
         perfil = None
-        logger.info("iniciando_procesamiento", task_id=task_id, nit_pref=nit_pref)
-        await emit_stage(task_id, "ocr_start", mensaje="Ejecutando OCR…")
+        servicio, motor_nombre = _servicio_ocr(motor)
+        logger.info(
+            "iniciando_procesamiento", task_id=task_id, nit_pref=nit_pref, motor=motor_nombre
+        )
+        await emit_stage(task_id, "ocr_start", mensaje=f"Ejecutando OCR ({motor_nombre})…")
 
         async with SessionLocal() as session:
             repo = ComprobanteRepo(session)
 
             texto_ocr, confianza, paginas = await asyncio.to_thread(
-                ocr_service.extract_text, file_path
+                servicio.extract_text, file_path
             )
             await repo.update_ocr(task_id, texto=texto_ocr, confianza=confianza, paginas=paginas)
-            logger.info("ocr_completado", task_id=task_id, confianza=confianza, paginas=paginas)
+            logger.info(
+                "ocr_completado",
+                task_id=task_id,
+                confianza=confianza,
+                paginas=paginas,
+                motor=motor_nombre,
+            )
             await emit_stage(
                 task_id,
                 "ocr_done",
-                mensaje="OCR completado",
+                mensaje=f"OCR completado ({motor_nombre})",
                 confianza=confianza,
                 texto_ocr=texto_ocr[:8000],
                 paginas=paginas,

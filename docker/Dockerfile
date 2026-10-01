@@ -43,10 +43,15 @@ RUN pip install --no-cache-dir poetry && \
     pip install --no-cache-dir pytest pytest-asyncio && \
     rm -rf /root/.cache/pip
 
+# Motor OCR alternativo para pruebas A/B desde la UI (ver VALIDACION_PADDLEOCR.md)
+RUN pip install --no-cache-dir paddlepaddle==3.3.1 paddleocr==3.7.0 onnxruntime
+
 COPY app ./app
 COPY wsdl ./wsdl
 
-RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app && \
+    mkdir -p /home/appuser/.paddlex /home/appuser/.cache/huggingface && \
+    chown -R appuser:appuser /home/appuser
 USER appuser
 
 EXPOSE 8000

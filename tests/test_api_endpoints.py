@@ -69,6 +69,52 @@ def test_upload_acepta_nit_form(tmp_path, monkeypatch):
             app.dependency_overrides.pop(get_db, None)
 
 
+def test_upload_motor_invalido():
+    r = client.post(
+        "/api/v1/upload",
+        files={"file": ("ok.png", b"\x89PNG\r\n\x1a\n", "image/png")},
+        data={"motor_ocr": "google"},
+    )
+    assert r.status_code == 400
+    assert "Motor OCR" in r.json()["detail"]
+
+
+def test_upload_paddle_no_disponible(monkeypatch):
+    from app.api import upload as upload_mod
+
+    monkeypatch.setattr(upload_mod, "_paddle_disponible", lambda: False)
+    r = client.post(
+        "/api/v1/upload",
+        files={"file": ("ok.png", b"\x89PNG\r\n\x1a\n", "image/png")},
+        data={"motor_ocr": "paddle"},
+    )
+    assert r.status_code == 400
+    assert "paddleocr" in r.json()["detail"]
+
+
+def test_servicio_ocr_default_tesseract():
+    from app.api.upload import _servicio_ocr
+
+    servicio, nombre = _servicio_ocr(None)
+    assert nombre == "tesseract"
+    assert servicio is not None
+    assert _servicio_ocr("  ")[1] == "tesseract"
+
+
+def test_paddle_unir_resultados():
+    from app.services.paddle_ocr_service import PaddleOCRService
+
+    texto, conf = PaddleOCRService._unir(
+        [{"rec_texts": ["RECIBO:000299", "TOTAL 8800"], "rec_scores": [0.9, 0.8]}]
+    )
+    assert texto == "RECIBO:000299\nTOTAL 8800"
+    assert abs(conf - 85.0) < 0.01
+
+    texto_vacio, conf_vacia = PaddleOCRService._unir([{"rec_texts": [], "rec_scores": []}])
+    assert texto_vacio == ""
+    assert conf_vacia == 0.0
+
+
 def test_aplicar_identificacion_pref_sobre_ocr():
     from datetime import date
     from decimal import Decimal
