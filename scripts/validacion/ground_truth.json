@@ -1,0 +1,102 @@
+{
+  "_instrucciones": "BORRADOR de ground truth (Fase 1), verificado por OCR cruzado (Paddle + Tesseract) y lectura visual humana donde fue posible. 'texto' = transcripción de referencia de las líneas IMPRESAS (se excluyen números manuscritos a mano); 'campos' = valores exactos para exactitud por campo. Omitir un campo = no evaluable. Fecha en YYYY-MM-DD; valor solo dígitos (ej. '11450'). numero_referencia solo cuando el comprobante trae etiqueta 'Referencia'. REVISAR Y CONFIRMAR POR HUMANO antes de usar para decisiones definitivas.",
+  "WhatsApp Image 2026-09-18 at 10.51.55 AM.jpeg": {
+    "texto": "RECIBO:000299\n17/09/2026 09:35:01\ncredibanco\nICA OFC LOCAL ICA GUAMAL\nCL 15 2-45\nVENTA APROBADA\nAJ21/AVd\nCU: 015041346\nTER: 000BJ5ZQ\nAUT: 093501\nCriptograma: D69F973E5A870068 TSI: 9B020000\nTVR: 95050000008001\nRRN: 168312\nAID: A0000000041010\nVER: SFNV03_CA3\nTOTAL (COP): $22.900\nVLR. NETO: $22.900\nDEBITO MASTERCARD\n**5449\nPAGO SIN CONTACTO",
+    "campos": {
+      "fecha_transaccion": "2026-09-17",
+      "valor_total": "22900"
+    }
+  },
+  "WhatsApp Image 2026-09-18 at 10.51.56 AM.jpeg": {
+    "texto": "RECIBO:000265\n17/09/2026 15:37:58\ncredibanco\nICA OFC LOCAL ICA GUAMAL\nCL 15 2-45\nVENTA APROBADA\nAJ9TYem3\nCU: 015041346\nTER: 000BJ5ZS\nAUT: 255343\nCriptograma: 9FFE47D73731A863 TSI: 9B027800\nTVR: 950580C0048000\nRRN: 210911\nAID: A0000000032010\nVER: SFNV03_CA3\nTOTAL (COP): $20.250\nVLR. NETO: $20.250\nDEBITO VISA\n**7926\nAL DIGITAR SU CLAVE SE EVITA\nFIRMAR ESTE VOUCHER",
+    "campos": {
+      "fecha_transaccion": "2026-09-17",
+      "valor_total": "20250"
+    }
+  },
+  "WhatsApp Image 2026-09-18 at 10.51.56 AM (1).jpeg": {
+    "texto": "Wompi\nCorresponsal Bancolombia\nMULTIPAGOS B G\nGUAMAL\nMETCO\ncr 6 13 28 brr fundadores, fundadores\nTRANSACCIÓN EXITOSA\nMonto: $11.450,00\nFecha: SEP 17 2026 - 09:24:49\nTransacción: Recaudo de factura\nReferencia: 17445016\nConvenio: 72159\nNombre: INSTITUTO COLOMBIANO\nRecibo: 882233\nTer: 4MMD4X1882\nRRN: 610937882233 Aprob. 513718\nC. Único 76772\nEl Corresponsal Bancolombia no debe\ncobrarte por realizar esta transacción\nBancolombia es responsable por los\nservicios prestados por el CB. El CB no puede\nprestar servicios financieros por su cuenta.\nVerifique que la información en este\ndocumento sea correcta. Conserve esta\ntirilla como soporte.\nLínea de atención: 018000912345\n*** CLIENTE ***",
+    "campos": {
+      "fecha_transaccion": "2026-09-17",
+      "valor_total": "11450",
+      "numero_referencia": "17445016"
+    }
+  },
+  "WhatsApp Image 2026-09-18 at 10.51.56 AM (2).jpeg": {
+    "texto": "Wompi\nCorresponsal Bancolombia\nMULTIPAGOS B G\nGUAMAL\nMETCO\ncr 6 13 28 brr fundadores, fundadores\nTRANSACCIÓN EXITOSA\nMonto: $8.800,00\nFecha: SEP 17 2026 - 07:46:06\nTransacción: Recaudo de factura\nReferencia: 17329284\nConvenio: 72159\nNombre: INSTITUTO COLOMBIANO\nRecibo: 508463\nTer: 4MMD4X1882\nRRN: 606089508463 Aprob. 207953\nC. Único 76772\nEl Corresponsal Bancolombia no debe\ncobrarte por realizar esta transacción\nBancolombia es responsable por los\nservicios prestados por el CB. El CB no puede\nprestar servicios financieros por su cuenta.\nVerifique que la información en este\ndocumento sea correcta. Conserve esta\ntirilla como soporte.\nLínea de atención: 018000912345\n*** CLIENTE ***",
+    "campos": {
+      "fecha_transaccion": "2026-09-17",
+      "valor_total": "8800",
+      "numero_referencia": "17329284"
+    }
+  },
+  "WhatsApp Image 2026-09-18 at 10.51.56 AM (3).jpeg": {
+    "texto": "RECIBO:000263\n16/09/2026 14:47:30\ncredibanco\nICA OFC LOCAL ICA GUAMAL\nCL 15 2-45\nVENTA APROBADA\nAPDvDN8H\nCU: 015041346\nTER: 000BJ5ZS\nAUT: 144730\nCriptograma: 519CAC984F1B1BB0 TSI: 9B020000\nTVR: 95050000008001\nRRN: 488962\nAID: A0000000041010\nVER: SFNV03_CA3\nTOTAL (COP): $45.800\nVLR. NETO: $45.800\nDEBITO MASTERCARD\n**8708\nPAGO SIN CONTACTO",
+    "campos": {
+      "fecha_transaccion": "2026-09-16",
+      "valor_total": "45800"
+    }
+  },
+  "WhatsApp Image 2026-09-18 at 10.51.57 AM.jpeg": {
+    "texto": "Wompi\nCorresponsal Bancolombia\nXABIER 3\nGUAMAL\ntv 5 n 13 - 43 ap 2\nMETCO\nfundadores, fundadores\nTRANSACCIÓN EXITOSA\nMonto: $9.900,00\nFecha: SEP 16 2026 - 10:04:38\nTransacción: Recaudo de factura\nReferencia: 40316662\nConvenio: 72159\nNombre: INSTITUTO COLOMBIANO\nRecibo: 560715\nTer: 4MMD4X1903\nRRN: 292858560715 Aprob. 983153\nC. Único 65251\nEl Corresponsal Bancolombia no debe\ncobrarte por realizar esta transacción\nBancolombia es responsable por los\nservicios prestados por el CB. El CB no puede\nprestar servicios financieros por su cuenta.\nVerifique que la información en este\ndocumento sea correcta. Conserve esta\ntirilla como soporte.\nLínea de atención: 018000912345\n*** CLIENTE ***",
+    "campos": {
+      "fecha_transaccion": "2026-09-16",
+      "valor_total": "9900",
+      "numero_referencia": "40316662"
+    }
+  },
+  "WhatsApp Image 2026-09-18 at 10.51.57 AM (1).jpeg": {
+    "texto": "RECIBO:000259\n16/09/2026 08:44:59\ncredibanco\nICA OFC LOCAL ICA GUAMAL\nCL 15 2-45\nVENTA APROBADA\nZAAp87s=\nCU: 015041346\nTER: 000BJ5ZS\nAUT: 459955\nCriptograma: B2AEDE7C8FDE8B90 TSI: 9B020000\nTVR: 95050000000000\nRRN: 544782\nAID: A0000000031010\nVER: SFNV03_CA3\nTOTAL (COP): $20.250\nVLR. NETO: $20.250\nCREDITO VISA\n**5671 CUOTAS: 1\nPAGARE INCONDICIONALMENTE Y A LA ORDEN DEL ACREEDOR\nEL VALOR TOTAL DE ESTE PAGARE JUNTO CON LOS INTERESES\nA LAS TASAS MAXIMAS PERMITIDAS POR LA LEY\nPAGO SIN CONTACTO",
+    "campos": {
+      "fecha_transaccion": "2026-09-16",
+      "valor_total": "20250"
+    }
+  },
+  "WhatsApp Image 2026-09-18 at 10.52.57 AM.jpeg": {
+    "texto": "Wompi\nCorresponsal Bancolombia\nSHELCYN DAYERLY BOHORQ GUAMAL\nMETCO\ncl 16 5 22 fundadores\nTRANSACCIÓN EXITOSA\nMonto: $8.800,00\nFecha: SEP 18 2026 - 09:22:47\nTransacción: Recaudo de factura\nReferencia: 17419333\nConvenio: 72159\nNombre: INSTITUTO COLOMBIANO\nRecibo: 477050\nTer: AGKD4C0225\nRRN: 877711477050 Aprob: 985564\nC. Único 61215\nEl Corresponsal Bancolombia no debe\ncobrarte por realizar esta transacción\nBancolombia es responsable por los\nservicios prestados por el CB. El CB no puede\nprestar servicios financieros por su cuenta.\nVerifique que la información en este\ndocumento sea correcta. Conserve esta\ntirilla como soporte.\nLínea de atención: 018000912345\n*** CLIENTE ***",
+    "campos": {
+      "fecha_transaccion": "2026-09-18",
+      "valor_total": "8800",
+      "numero_referencia": "17419333"
+    }
+  },
+  "WhatsApp Image 2026-09-18 at 10.52.57 AM (1).jpeg": {
+    "texto": "Wompi\nCorresponsal Bancolombia\nSHELCYN DAYERLY BOHORQ GUAMAL\nMETCO\ncl 16 5 22 fundadores\nTRANSACCIÓN EXITOSA\nMonto: $8.800,00\nFecha: SEP 18 2026 - 09:22:47\nTransacción: Recaudo de factura\nReferencia: 17419333\nConvenio: 72159\nNombre: INSTITUTO COLOMBIANO\nRecibo: 477050\nTer: AGKD4C0225\nRRN: 877711477050 Aprob: 985564\nC. Único 61215\nEl Corresponsal Bancolombia no debe\ncobrarte por realizar esta transacción\nBancolombia es responsable por los\nservicios prestados por el CB. El CB no puede\nprestar servicios financieros por su cuenta.\nVerifique que la información en este\ndocumento sea correcta. Conserve esta\ntirilla como soporte.\nLínea de atención: 018000912345\n*** CLIENTE ***",
+    "campos": {
+      "fecha_transaccion": "2026-09-18",
+      "valor_total": "8800",
+      "numero_referencia": "17419333"
+    },
+    "_nota": "Foto rotada/desenfocada del mismo comprobante que 10.52.57 AM (mismo Recibo 477050 y Referencia 17419333); texto de referencia = mismo recibo."
+  },
+  "WhatsApp Image 2026-09-18 at 10.53.20 AM.jpeg": {
+    "texto": "RECIBO:000245\n18/09/2026 10:04:08\ncredibanco\nICA OFC LOCAL ICA GUAMAL\nCL 15 2-45\nVENTA APROBADA\nAPyq00BQ\nCU: 015041346\nTER: 000BJ5ZO\nAUT: 130912\nCriptograma: 95F47C816C886CF7 TSI: 9B020000\nTVR: 95050000000000\nAID: A0000000032010\nRRN: 793812\nVER: SFNV03_CA3\nTOTAL (COP): $11.450\nVLR. NETO: $11.450\nDEBITO VISA\n**6319\nPAGO SIN CONTACTO",
+    "campos": {
+      "fecha_transaccion": "2026-09-18",
+      "valor_total": "11450"
+    }
+  },
+  "WhatsApp Image 2026-09-18 at 10.53.20 AM (1).jpeg": {
+    "texto": "RECIBO:000245\n18/09/2026 10:04:08\ncredibanco\nICA OFC LOCAL ICA GUAMAL\nCL 15 2-45\nVENTA APROBADA\nAPyq00BQ\nCU: 015041346\nTER: 000BJ5ZO\nAUT: 130912\nCriptograma: 95F47C816C886CF7 TSI: 9B020000\nTVR: 95050000000000\nAID: A0000000032010\nRRN: 793812\nVER: SFNV03_CA3\nTOTAL (COP): $11.450\nVLR. NETO: $11.450\nDEBITO VISA\n**6319\nPAGO SIN CONTACTO",
+    "campos": {
+      "fecha_transaccion": "2026-09-18",
+      "valor_total": "11450"
+    },
+    "_nota": "Duplicado exacto del comprobante 10.53.20 AM (RECIBO:000245)."
+  },
+  "WhatsApp Image 2026-09-23 at 5.37.56 PM.jpeg": {
+    "texto": "Redeban\nSEP 07 2026 14:36:28 DES 11.5 CB\nCORRESPONSAL\nBANCOLOMBIA\nMULTIPAGAS RIONEGRO\nCR 50 49 24\nC. UNICO: 3007014826 TER: GZ0AZ382\nRECIBO: 092196\nRRN: 127032\nRECAUDO\nAPRO: 815118\nCONVENIO: 72159\nINSTITUTO COLOMBIANO\nREF: 000000000001045048358\nVALOR $171.150\nTU CORRESPONSAL BANCARIO NO DEBE COBRARTE POR\nHACER ESTA TRANSACCION.\nBancolombia es responsable por los servicios\nprestados por el CB. El CB no puede prestar\nservicios financieros por su cuenta. Verifique\nque la informacion en este documento este\ncorrecta. Para reclamos comuniquese al\n018000912345. Conserve esta tirilla como\nsoporte.\n*** CLIENTE ***",
+    "campos": {
+      "fecha_transaccion": "2026-09-07",
+      "valor_total": "171150"
+    },
+    "_nota": "Etiqueta 'REF:' (no 'Referencia'): numero_referencia no evaluable por el extractor actual; número de referencia omitido del GT por dudas de conteo de dígitos (confirmar a ojo)."
+  },
+  "WhatsApp Image 2026-09-23 at 5.38.21 PM.jpeg": {
+    "texto": "RECIBO:000291\n19/05/2026 14:39:50\ncredibanco\nICA ARP JOSE M CORDOBA RIONEGR\nZONA DE CARGA PSO 2\nVENTA APROBADA\nGj6zx2c=\nCU: 014375992\nTER: 000BHYJD\nAUT: 143951\nCriptograma: F71B9282E725837B TSI: 9B020000\nTVR: 95050000008001\nRRN: 223932\nAID: A0000000041010\nVER: SFNV03_C81\nTOTAL (COP): $22.900\nVLR. NETO: $22.900\nDEBITO MASTERCARD\n**6648\nPAGO SIN CONTACTO",
+    "campos": {
+      "fecha_transaccion": "2026-05-19",
+      "valor_total": "22900"
+    }
+  }
+}

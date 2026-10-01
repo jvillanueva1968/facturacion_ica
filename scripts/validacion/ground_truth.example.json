@@ -1,0 +1,13 @@
+{
+  "WhatsApp Image 2026-09-18 at 10.51.55 AM.jpeg": {
+    "texto": "TEXTO VERIFICADO MANUALMENTE linea por linea\n...",
+    "campos": {
+      "nit_pagador": "800197268",
+      "dv_pagador": "4",
+      "fecha_transaccion": "2026-09-17",
+      "valor_total": "150000",
+      "numero_referencia": "000299"
+    }
+  },
+  "_instrucciones": "Copiar este archivo como ground_truth.json y completar con datos VERIFICADOS a ojo por el humano. 'texto' es la referencia para el CER; 'campos' para la exactitud por campo. Solo se evalúan las imágenes listadas aqui."
+}
