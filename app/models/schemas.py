@@ -359,6 +359,8 @@ class CampoPerfilIn(BaseModel):
     literal: Optional[str] = None
     requerido: bool = False
     orden: int = 99
+    label: str | None = Field(None, max_length=80)
+    tipo: Literal["texto", "numero", "fecha"] | None = None
 
 
 class PerfilExtraccionIn(BaseModel):

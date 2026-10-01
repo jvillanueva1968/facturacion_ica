@@ -4,6 +4,7 @@ from app.services.extraction import (
     PerfilExtraccionData,
     campos_faltantes,
     detectar_perfil,
+    es_nombre_campo,
     extraer_campos,
     normalizar_fecha,
     normalizar_valor,
@@ -155,3 +156,57 @@ def test_seeds_tienen_campos_requeridos():
             cfg.get("requerido") for cfg in seed["campos"].values()
         ), seed["codigo"]
         assert seed["detect_keywords"], seed["codigo"]
+
+
+def test_es_nombre_campo():
+    assert es_nombre_campo("valor_total")
+    assert es_nombre_campo("numero_tarjeta")
+    assert not es_nombre_campo("Campo Malo")
+    assert not es_nombre_campo("1abc")
+    assert not es_nombre_campo("a")
+    assert not es_nombre_campo(123)
+    assert not es_nombre_campo(None)
+
+
+def test_extraer_campos_personalizados():
+    perfil = PerfilExtraccionData(
+        codigo="custom-test",
+        nombre="Custom",
+        campos={
+            "numero_tarjeta": {
+                "regex": r"Tarjeta: (\d{4}\s?\d{4}\s?\d{4}\s?\d{4})",
+                "requerido": False, "orden": 1,
+            },
+            "valor_adicional": {
+                "regex": r"Adicional: \$([\d.,]+)",
+                "tipo": "numero", "requerido": False, "orden": 2,
+            },
+            "fecha_pago": {
+                "regex": r"Fecha de pago: (\w+ \d{1,2} \d{4})",
+                "tipo": "fecha", "requerido": False, "orden": 3,
+            },
+        },
+    )
+    texto = (
+        "Tarjeta: 4111 1111 1111 1111\n"
+        "Adicional: $1.500,00\n"
+        "Fecha de pago: SEP 18 2026\n"
+    )
+    campos = extraer_campos(texto, perfil)
+    assert campos["numero_tarjeta"] == "4111 1111 1111 1111"
+    assert campos["valor_adicional"] == "1500"
+    assert campos["fecha_pago"] == "2026-09-18"
+
+
+def test_ordenar_campos_incluye_personalizados():
+    perfil = PerfilExtraccionData(
+        codigo="custom-test",
+        nombre="Custom",
+        campos={
+            "numero_tarjeta": {"regex": r"(\d+)", "label": "N° tarjeta", "orden": 5},
+            "valor_total": {"regex": r"(\d+)", "requerido": True, "orden": 1},
+        },
+    )
+    ordenados = ordenar_campos(perfil)
+    assert [c["campo"] for c in ordenados] == ["valor_total", "numero_tarjeta"]
+    assert ordenados[1]["label"] == "N° tarjeta"

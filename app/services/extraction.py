@@ -22,11 +22,32 @@ CAMPOS_CATALOGO = [
     "autenticacion",
 ]
 
+# Nombres de campo permitidos: minúsculas/dígitos/guion bajo, 2-40 chars.
+# El catálogo base solo es sugerencia; el usuario puede crear campos propios.
+RE_NOMBRE_CAMPO = re.compile(r"^[a-z][a-z0-9_]{1,39}$")
+
+# Etiquetas visibles de los campos base (el resto se deriva del nombre).
+ETIQUETAS = {
+    "valor_total": "Valor total",
+    "fecha": "Fecha",
+    "numero_referencia": "N° referencia",
+    "banco": "Banco",
+    "forma_pago": "Forma de pago",
+    "convenio": "Convenio",
+    "ubicacion": "Ubicación",
+    "autenticacion": "Autenticación",
+}
+
 MESES = {
     "ENE": 1, "JAN": 1, "FEB": 2, "MAR": 3, "ABR": 4, "APR": 4,
     "MAY": 5, "JUN": 6, "JUL": 7, "AGO": 8, "AUG": 8, "SEP": 9,
     "OCT": 10, "NOV": 11, "DIC": 12, "DEC": 12,
 }
+
+
+def es_nombre_campo(v) -> bool:
+    """True si `v` es un nombre de campo válido (base o personalizado)."""
+    return isinstance(v, str) and bool(RE_NOMBRE_CAMPO.match(v))
 
 
 def normalizar_valor(raw) -> str:
@@ -154,10 +175,19 @@ def extraer_campos(texto: str, perfil: PerfilExtraccionData) -> dict:
                 valor = captura
         if not valor:
             continue
+        tipo = cfg.get("tipo")
         if campo == "valor_total":
             valor = normalizar_valor(valor)
         elif campo == "fecha":
             valor = normalizar_fecha(valor)
+        elif tipo == "numero":
+            valor = normalizar_valor(valor)
+        elif tipo == "fecha":
+            valor = normalizar_fecha(valor) or " ".join(valor.split())
+        elif campo.startswith("valor"):
+            valor = normalizar_valor(valor)
+        elif campo.startswith("fecha"):
+            valor = normalizar_fecha(valor) or " ".join(valor.split())
         else:
             valor = " ".join(valor.split())
         if valor:
@@ -175,11 +205,9 @@ def campos_faltantes(perfil: PerfilExtraccionData, campos: dict) -> list:
 
 
 def ordenar_campos(perfil: PerfilExtraccionData) -> list:
-    """[{campo, orden, requerido, regex, literal}] ordenado por `orden`."""
+    """[{campo, orden, requerido, regex, literal, label, tipo}] ordenado por `orden`."""
     items = []
     for campo, cfg in (perfil.campos or {}).items():
-        if campo not in CAMPOS_CATALOGO:
-            continue
         cfg = cfg if isinstance(cfg, dict) else {}
         items.append({
             "campo": campo,
@@ -187,6 +215,8 @@ def ordenar_campos(perfil: PerfilExtraccionData) -> list:
             "requerido": bool(cfg.get("requerido")),
             "regex": cfg.get("regex") or "",
             "literal": cfg.get("literal") or "",
+            "label": cfg.get("label") or "",
+            "tipo": cfg.get("tipo") or "",
         })
     items.sort(key=lambda x: x["orden"])
     return items

@@ -10,7 +10,7 @@ from app.core.rate_limit import limiter
 from app.db.repositories import AuditRepo, PerfilRepo
 from app.db.session import get_db
 from app.models.schemas import PerfilExtraccionIn, PerfilExtraccionOut
-from app.services.extraction import CAMPOS_CATALOGO, PERFILES_SEED
+from app.services.extraction import CAMPOS_CATALOGO, ETIQUETAS, PERFILES_SEED, es_nombre_campo
 
 router = APIRouter()
 logger = structlog.get_logger()
@@ -22,8 +22,12 @@ def _validar(body: PerfilExtraccionIn) -> None:
     if not body.campos:
         raise HTTPException(400, "Debe definir al menos un campo")
     for campo, cfg in body.campos.items():
-        if campo not in CAMPOS_CATALOGO:
-            raise HTTPException(400, f"Campo desconocido: {campo}. Válidos: {CAMPOS_CATALOGO}")
+        if not es_nombre_campo(campo):
+            raise HTTPException(
+                400,
+                f"Campo inválido: {campo}. Use minúsculas/dígitos/guion bajo (2-40), "
+                f"p. ej. valor_total, numero_tarjeta. Catálogo base: {CAMPOS_CATALOGO}",
+            )
         if cfg.regex:
             try:
                 re.compile(cfg.regex)
@@ -57,7 +61,7 @@ async def crear_perfil(
         codigo=body.codigo,
         nombre=body.nombre,
         detect_keywords=body.detect_keywords,
-        campos={k: v.model_dump() for k, v in body.campos.items()},
+        campos={k: v.model_dump(exclude_none=True) for k, v in body.campos.items()},
         llm_respaldo=body.llm_respaldo,
         activo=body.activo,
         es_default=body.es_default,
@@ -93,7 +97,7 @@ async def actualizar_perfil(
         codigo=body.codigo,
         nombre=body.nombre,
         detect_keywords=body.detect_keywords,
-        campos={k: v.model_dump() for k, v in body.campos.items()},
+        campos={k: v.model_dump(exclude_none=True) for k, v in body.campos.items()},
         llm_respaldo=body.llm_respaldo,
         activo=body.activo,
         es_default=body.es_default,
@@ -197,4 +201,4 @@ async def seed_perfiles(
 
 @router.get("/perfiles/catalogo/campos")
 async def catalogo_campos(user: dict = Depends(require_viewer)):
-    return {"campos": CAMPOS_CATALOGO}
+    return {"campos": CAMPOS_CATALOGO, "etiquetas": ETIQUETAS}

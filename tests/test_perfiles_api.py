@@ -82,13 +82,57 @@ def test_crear_perfil_regex_invalida():
         assert "Regex" in r.json()["detail"]
 
 
-def test_crear_perfil_campo_desconocido():
+def test_crear_perfil_campo_dinamico_aceptado():
     with client as c:
         r = c.post("/api/v1/perfiles", json=_body(campos={
             "campo_inventado": {"regex": "X"},
         }))
+        assert r.status_code == 201, r.text
+        perfil = r.json()
+        try:
+            assert "campo_inventado" in perfil["campos"]
+            assert perfil["campos"]["campo_inventado"]["regex"] == "X"
+        finally:
+            c.delete(f"/api/v1/perfiles/{perfil['id']}")
+
+
+def test_crear_perfil_campo_nombre_invalido():
+    with client as c:
+        r = c.post("/api/v1/perfiles", json=_body(campos={
+            "Campo Malo!": {"regex": "X"},
+        }))
         assert r.status_code == 400
-        assert "campo_inventado" in r.json()["detail"]
+        assert "Campo Malo!" in r.json()["detail"]
+
+
+def test_crear_perfil_campo_con_label_y_tipo():
+    body = _body(campos={
+        "fecha_pago": {
+            "regex": r"Fecha de pago: (\d{4}-\d{2}-\d{2})",
+            "requerido": True,
+            "orden": 3,
+            "label": "Fecha de pago",
+            "tipo": "fecha",
+        },
+    })
+    with client as c:
+        r = c.post("/api/v1/perfiles", json=body)
+        assert r.status_code == 201, r.text
+        perfil = r.json()
+        try:
+            cfg = perfil["campos"]["fecha_pago"]
+            assert cfg["label"] == "Fecha de pago"
+            assert cfg["tipo"] == "fecha"
+        finally:
+            c.delete(f"/api/v1/perfiles/{perfil['id']}")
+
+
+def test_crear_perfil_campo_tipo_invalido():
+    with client as c:
+        r = c.post("/api/v1/perfiles", json=_body(campos={
+            "fecha_pago": {"regex": "X", "tipo": "moneda"},
+        }))
+        assert r.status_code == 422
 
 
 def test_crear_perfil_duplicado():
@@ -162,8 +206,10 @@ def test_catalogo_campos():
     with client as c:
         r = c.get("/api/v1/perfiles/catalogo/campos")
         assert r.status_code == 200
-        assert "valor_total" in r.json()["campos"]
-        assert "fecha" in r.json()["campos"]
+        j = r.json()
+        assert "valor_total" in j["campos"]
+        assert "fecha" in j["campos"]
+        assert j["etiquetas"]["valor_total"] == "Valor total"
 
 
 def test_reextraer_sin_perfil_detecta_y_fusiona(monkeypatch):

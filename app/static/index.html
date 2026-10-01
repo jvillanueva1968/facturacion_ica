@@ -412,6 +412,12 @@
         </template>
       </select>
     </label>
+    <label style="margin-bottom:0.75rem">Motor OCR
+      <select x-model="motorOcr">
+        <option value="tesseract">Tesseract (por defecto, rápido)</option>
+        <option value="paddle">PaddleOCR (más preciso, ~3-5 s)</option>
+      </select>
+    </label>
     <div class="drop"
          :class="{over: dragging}"
          @dragover.prevent="dragging=true"
@@ -524,7 +530,7 @@
 
         <div class="msg" style="background:rgba(251,191,36,0.1); border:1px solid var(--warn); color:var(--warn)"
              x-show="camposFaltantes.length">
-          Campos requeridos sin valor: <span x-text="camposFaltantes.join(', ')"></span>
+          Campos requeridos sin valor: <span x-text="faltantesTexto()"></span>
           (verifique/complete manualmente).
         </div>
 
@@ -548,7 +554,7 @@
                 </select>
               </template>
               <template x-if="c.campo !== 'forma_pago'">
-                <input :type="c.campo === 'fecha' ? 'date' : 'text'"
+                <input :type="(c.campo === 'fecha' || c.tipo === 'fecha') ? 'date' : 'text'"
                        x-model="form[campoFormKey(c.campo)]" />
               </template>
             </label>
@@ -814,48 +820,61 @@
       <h2 style="margin-top:1rem">Campos a extraer</h2>
       <p class="muted" style="margin-top:0" x-show="!textoOcr">
         Sin texto OCR disponible: abra un comprobante (paso 3) para ver aquí la
-        coincidencia en vivo mientras edita Usar/regex.
+        coincidencia en vivo mientras edita las expresiones regulares.
       </p>
       <table>
         <thead>
-          <tr><th>Campo</th><th>Usar</th><th>Expresión regular</th><th>Literal</th><th>Req.</th><th>Orden</th><th>Texto OCR</th></tr>
+          <tr><th>Campo</th><th>Etiqueta</th><th>Expresión regular</th><th>Literal</th><th>Req.</th><th>Orden</th><th>Texto OCR</th><th></th></tr>
         </thead>
         <tbody>
-          <template x-for="campo in camposCatalogo" :key="campo">
+          <template x-for="campo in camposEditor()" :key="campo">
             <tr>
               <td><code x-text="campo"></code></td>
               <td>
-                <input type="checkbox" style="width:auto"
-                       :checked="!!(perfilEdit.campos[campo] && perfilEdit.campos[campo].usar)"
-                       @change="toggleCampo(campo, $event.target.checked)" />
+                <input style="width:130px" x-model="perfilEdit.campos[campo].label"
+                       placeholder="etiqueta visible" />
               </td>
               <td>
                 <input style="width:100%" x-model="perfilEdit.campos[campo].regex"
-                       :disabled="!(perfilEdit.campos[campo] && perfilEdit.campos[campo].usar)"
                        placeholder="TOTAL:?\s*\$?([\d.,]+)" />
               </td>
               <td>
                 <input style="width:110px" x-model="perfilEdit.campos[campo].literal"
-                       :disabled="!(perfilEdit.campos[campo] && perfilEdit.campos[campo].usar)"
                        placeholder="CREDIBANCO" />
               </td>
               <td>
                 <input type="checkbox" style="width:auto"
                        :checked="perfilEdit.campos[campo] && perfilEdit.campos[campo].requerido"
-                       :disabled="!(perfilEdit.campos[campo] && perfilEdit.campos[campo].usar)"
                        @change="perfilEdit.campos[campo].requerido = $event.target.checked" />
               </td>
               <td>
-                <input type="number" style="width:64px" x-model.number="perfilEdit.campos[campo].orden"
-                       :disabled="!(perfilEdit.campos[campo] && perfilEdit.campos[campo].usar)" />
+                <input type="number" style="width:64px" x-model.number="perfilEdit.campos[campo].orden" />
               </td>
               <td class="ocr-preview">
                 <code x-text="previewEdicion(campo)"></code>
+              </td>
+              <td>
+                <button style="font-size:0.75rem; padding:0.25rem 0.5rem; background:var(--err)"
+                        title="Eliminar campo" @click="eliminarCampo(campo)">✕</button>
               </td>
             </tr>
           </template>
         </tbody>
       </table>
+
+      <div class="actions" style="justify-content:flex-start; gap:0.6rem; flex-wrap:wrap; align-items:flex-end">
+        <label style="margin:0">Nuevo campo (minúsculas, guion bajo)
+          <input list="sugCampos" x-model="nuevoCampoNombre" placeholder="numero_tarjeta"
+                 style="width:14rem" />
+          <datalist id="sugCampos">
+            <template x-for="c in camposCatalogo" :key="c"><option :value="c"></option></template>
+          </datalist>
+        </label>
+        <label style="margin:0">Etiqueta (opcional)
+          <input x-model="nuevoCampoLabel" placeholder="N° tarjeta" style="width:12rem" />
+        </label>
+        <button class="secondary" @click="agregarCampo()">+ Agregar campo</button>
+      </div>
 
       <div class="actions">
         <button class="success" @click="guardarPerfil()" :disabled="guardandoPerfil"
@@ -996,7 +1015,12 @@ function app() {
     esAdmin: false,
     perfiles: [],
     camposCatalogo: [],
+    etiquetasCatalogo: {},
+    nuevoCampoNombre: '',
+    nuevoCampoLabel: '',
+    customFormKeys: [],
     perfilSel: '',
+    motorOcr: 'tesseract',
     perfilReextraer: '',
     perfilCodigo: '',
     camposFaltantes: [],
@@ -1200,6 +1224,7 @@ function app() {
         const r = await fetch('/api/v1/perfiles/catalogo/campos', { headers: this.authHeaders() });
         if (r.ok) {
           const j = await r.json();
+          if (j.etiquetas) this.etiquetasCatalogo = j.etiquetas;
           if (j.campos?.length) { this.camposCatalogo = j.campos; return; }
         }
       } catch { /* ignore */ }
@@ -1244,6 +1269,7 @@ function app() {
         fd.append('nit_pagador', this.nitSolo());
         fd.append('dv_pagador', this.form.dv_pagador || '');
         if (this.perfilSel) fd.append('perfil_id', this.perfilSel);
+        fd.append('motor_ocr', this.motorOcr || 'tesseract');
         const r = await fetch('/api/v1/upload', {
           method: 'POST',
           body: fd,
@@ -1465,9 +1491,6 @@ function app() {
     },
 
     camposPerfil() {
-      const cat = this.camposCatalogo.length
-        ? this.camposCatalogo
-        : ['valor_total', 'fecha', 'numero_referencia', 'banco', 'forma_pago'];
       const p = this.perfilActual();
       const cfg = p && p.campos ? Object.entries(p.campos) : [];
       if (!cfg.length) {
@@ -1475,16 +1498,22 @@ function app() {
           .map(c => ({ campo: c, requerido: false, orden: 99 }));
       }
       return cfg
-        .filter(([campo]) => cat.includes(campo))
+        .filter(([, v]) => v && typeof v === 'object')
         .map(([campo, v]) => ({
           campo,
-          requerido: !!(v && v.requerido),
-          orden: (v && v.orden != null) ? Number(v.orden) : 99,
+          requerido: !!v.requerido,
+          orden: (v.orden != null) ? Number(v.orden) : 99,
+          tipo: v.tipo || '',
         }))
         .sort((a, b) => a.orden - b.orden);
     },
 
     labelCampo(c) {
+      const ce = this.perfilEdit && this.perfilEdit.campos && this.perfilEdit.campos[c];
+      if (ce && ce.label) return ce.label;
+      const p = this.perfilActual();
+      const cfg = p && p.campos && p.campos[c];
+      if (cfg && cfg.label) return cfg.label;
       const mapa = {
         valor_total: 'Valor total',
         fecha: 'Fecha transacción',
@@ -1495,7 +1524,14 @@ function app() {
         ubicacion: 'Ubicación',
         autenticacion: 'Autenticación (AUT)',
       };
-      return mapa[c] || c;
+      if (mapa[c]) return mapa[c];
+      const et = this.etiquetasCatalogo && this.etiquetasCatalogo[c];
+      if (et) return et;
+      return String(c).replace(/_/g, ' ').replace(/\b\w/g, ch => ch.toUpperCase());
+    },
+
+    faltantesTexto() {
+      return (this.camposFaltantes || []).map(c => this.labelCampo(c)).join(', ');
     },
 
     campoFormKey(campo) {
@@ -1505,21 +1541,20 @@ function app() {
     ocrSnippets() {
       const p = this.perfilActual();
       if (!p || !p.campos || !this.textoOcr) return [];
-      const cat = this.camposCatalogo.length
-        ? this.camposCatalogo
-        : ['valor_total', 'fecha', 'numero_referencia', 'banco', 'forma_pago'];
       const texto = this.textoOcr;
+      const cp = (this.datos && this.datos.campos_perfil) || {};
       return Object.entries(p.campos)
-        .filter(([campo, cfg]) => cfg && typeof cfg === 'object' && cat.includes(campo))
+        .filter(([, cfg]) => cfg && typeof cfg === 'object')
         .sort(([, a], [, b]) => ((a.orden != null) ? Number(a.orden) : 99) - ((b.orden != null) ? Number(b.orden) : 99))
         .map(([campo, cfg]) => {
           const k = this.campoFormKey(campo);
-          const val = (this.datos && this.datos[k]) || this.form[k] || '';
+          const val = (this.datos && this.datos[k]) || this.form[k] || cp[campo] || '';
+          const esFecha = campo === 'fecha' || cfg.tipo === 'fecha' || campo.startsWith('fecha');
           return {
             campo,
             requerido: !!cfg.requerido,
             texto: this.matchTextoOcr(cfg, texto),
-            valor: campo === 'fecha' ? this.fmtFecha(val) : val,
+            valor: esFecha ? this.fmtFecha(val) : val,
           };
         });
     },
@@ -1544,7 +1579,7 @@ function app() {
     previewEdicion(campo) {
       if (!this.perfilEdit || !this.textoOcr) return '—';
       const cfg = this.perfilEdit.campos[campo];
-      if (!cfg || !cfg.usar) return '—';
+      if (!cfg) return '—';
       return this.matchTextoOcr(cfg, this.textoOcr) || '—';
     },
 
@@ -1582,12 +1617,36 @@ function app() {
       }
     },
 
-    _camposVacios() {
-      const o = {};
-      for (const c of this.camposCatalogo) {
-        o[c] = { usar: false, regex: '', literal: '', requerido: false, orden: 99 };
+    camposEditor() {
+      if (!this.perfilEdit) return [];
+      return Object.keys(this.perfilEdit.campos || {});
+    },
+
+    agregarCampo() {
+      if (!this.perfilEdit) return;
+      const nombre = String(this.nuevoCampoNombre || '').trim().toLowerCase();
+      if (!/^[a-z][a-z0-9_]{1,39}$/.test(nombre)) {
+        this.configError = 'Nombre de campo inválido: minúsculas, dígitos y guion bajo '
+          + '(2-40), p. ej. numero_tarjeta';
+        return;
       }
-      return o;
+      if (this.perfilEdit.campos[nombre]) {
+        this.configError = 'El campo "' + nombre + '" ya existe';
+        return;
+      }
+      this.perfilEdit.campos[nombre] = {
+        regex: '', literal: '', requerido: false, orden: 99,
+        label: (this.nuevoCampoLabel || '').trim(),
+        tipo: '',
+      };
+      this.nuevoCampoNombre = '';
+      this.nuevoCampoLabel = '';
+      this.configError = '';
+    },
+
+    eliminarCampo(campo) {
+      if (!this.perfilEdit) return;
+      delete this.perfilEdit.campos[campo];
     },
 
     nuevoPerfil() {
@@ -1596,24 +1655,25 @@ function app() {
       this.perfilEdit = {
         id: null, codigo: '', nombre: '', keywords: '',
         llm_respaldo: true, activo: true, es_default: false,
-        campos: this._camposVacios(),
+        campos: {},
       };
+      this.nuevoCampoNombre = '';
+      this.nuevoCampoLabel = '';
     },
 
     editarPerfil(p) {
       this.configError = '';
       this.configOk = '';
-      const campos = this._camposVacios();
+      const campos = {};
       for (const [k, v] of Object.entries(p.campos || {})) {
-        if (campos[k]) {
-          campos[k] = {
-            usar: true,
-            regex: (v && v.regex) || '',
-            literal: (v && v.literal) || '',
-            requerido: !!(v && v.requerido),
-            orden: (v && v.orden != null) ? Number(v.orden) : 99,
-          };
-        }
+        campos[k] = {
+          regex: (v && v.regex) || '',
+          literal: (v && v.literal) || '',
+          requerido: !!(v && v.requerido),
+          orden: (v && v.orden != null) ? Number(v.orden) : 99,
+          label: (v && v.label) || '',
+          tipo: (v && v.tipo) || '',
+        };
       }
       this.perfilEdit = {
         id: p.id,
@@ -1625,13 +1685,8 @@ function app() {
         es_default: !!p.es_default,
         campos,
       };
-    },
-
-    toggleCampo(campo, on) {
-      const c = this.perfilEdit.campos[campo];
-      if (!c) return;
-      c.usar = on;
-      if (on && !c.orden) c.orden = 99;
+      this.nuevoCampoNombre = '';
+      this.nuevoCampoLabel = '';
     },
 
     async guardarPerfil() {
@@ -1641,13 +1696,18 @@ function app() {
       try {
         const campos = {};
         for (const [k, v] of Object.entries(this.perfilEdit.campos || {})) {
-          if (!v.usar) continue;
+          const regex = (v.regex || '').trim();
+          const literal = (v.literal || '').trim();
+          const label = (v.label || '').trim();
+          if (!regex && !literal && !v.requerido) continue;
           campos[k] = {
-            regex: (v.regex || '').trim(),
-            literal: (v.literal || '').trim(),
+            regex,
+            literal,
             requerido: !!v.requerido,
             orden: Number(v.orden) || 99,
           };
+          if (label) campos[k].label = label;
+          if (v.tipo) campos[k].tipo = v.tipo;
         }
         const body = {
           codigo: (this.perfilEdit.codigo || '').trim(),
@@ -1740,6 +1800,17 @@ function app() {
         this.perfilReextraer = p ? p.id : '';
       }
       this.camposFaltantes = (d.campos_perfil && d.campos_perfil._faltantes) || [];
+      for (const k of this.customFormKeys) delete this.form[k];
+      this.customFormKeys = [];
+      const cp = d.campos_perfil || {};
+      for (const k of Object.keys(cp)) {
+        if (k.startsWith('_')) continue;
+        const key = this.campoFormKey(k);
+        if (this.form[key] === undefined) {
+          this.form[key] = (cp[k] == null) ? '' : String(cp[k]);
+          this.customFormKeys.push(key);
+        }
+      }
       if (d.servicios?.length) {
         this.form.servicios = d.servicios.map(s => ({
           codigo: s.codigo || '',
@@ -1796,6 +1867,8 @@ function app() {
       this.form.convenio = '';
       this.form.ubicacion = '';
       this.form.autenticacion = '';
+      for (const k of this.customFormKeys) delete this.form[k];
+      this.customFormKeys = [];
     },
 
     otraIdentificacion() {
