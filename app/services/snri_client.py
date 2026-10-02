@@ -95,8 +95,6 @@ class SNRIClient:
             session.mount("https://webservices.ica.gov.co", adapter)
             session.mount("http://webservices.ica.gov.co", adapter)
             logger.info("Certificado cliente .p12 configurado para SNRI")
-        else:
-            logger.warning("No hay certificado cliente configurado - SNRI podría rechazar peticiones en producción")
 
         session.verify = True
         return session
