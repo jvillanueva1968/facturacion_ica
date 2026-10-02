@@ -8,7 +8,7 @@ from pydantic import ValidationError
 from app.models.schemas import DatosExtraidos
 from app.config import get_settings
 from app.core.metrics import observar_llm
-from app.services.extraction import MESES
+from app.services.extraction import MESES, MIN_TEXTO_OCR
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -167,6 +167,13 @@ class LLMService:
         self.provider = settings.llm_provider
 
     async def extraer_datos(self, ocr_text: str) -> DatosExtraidos:
+        # Sin texto legible el LLM inventa valores (ej. 2022-01-01 / 123456 / 300):
+        # se niega la extracción en vez de devolver datos falsos.
+        if len((ocr_text or "").strip()) < MIN_TEXTO_OCR:
+            raise ValueError(
+                "Texto OCR insuficiente (<40 caracteres): no se extrajeron datos "
+                "para evitar valores inventados"
+            )
         prompt = PROMPT_EXTRACCION.format(
             hints=hallazgos_preliminares(ocr_text),
             ocr_text=ocr_text[:8000],

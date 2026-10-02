@@ -22,6 +22,11 @@ CAMPOS_CATALOGO = [
     "autenticacion",
 ]
 
+# Texto OCR mínimo para considerar que se leyó el comprobante.
+# Por debajo de esto NO se invoca el LLM: el modelo inventa datos
+# (valor/fecha/referencia falsos) cuando el texto está vacío o es basura.
+MIN_TEXTO_OCR = 40
+
 # Nombres de campo permitidos: minúsculas/dígitos/guion bajo, 2-40 chars.
 # El catálogo base solo es sugerencia; el usuario puede crear campos propios.
 RE_NOMBRE_CAMPO = re.compile(r"^[a-z][a-z0-9_]{1,39}$")

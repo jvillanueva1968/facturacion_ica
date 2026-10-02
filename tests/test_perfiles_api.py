@@ -512,3 +512,37 @@ def test_fusionar_no_aplica_forma_pago_invalida():
 
     out2 = _fusionar_datos(base, {"forma_pago": "PSE"}, perfil)
     assert out2.forma_pago == FormaPago.PSE
+
+
+def test_reextraer_texto_insuficiente_sin_perfil_400(monkeypatch):
+    from unittest.mock import AsyncMock, MagicMock
+
+    from app.api import upload as upload_mod
+
+    task_id = str(uuid.uuid4())
+    row = MagicMock()
+    row.task_id = task_id
+    row.texto_ocr = "basura"
+    row.datos_extraidos = None
+
+    fake_crepo = MagicMock()
+    fake_crepo.get_by_task_id = AsyncMock(return_value=row)
+    fake_prepo = MagicMock()
+    fake_prepo.list_all = AsyncMock(return_value=[])
+
+    async def _fake_db():
+        yield MagicMock()
+
+    monkeypatch.setattr(upload_mod, "ComprobanteRepo", lambda s: fake_crepo)
+    monkeypatch.setattr(upload_mod, "PerfilRepo", lambda s: fake_prepo)
+
+    app.dependency_overrides[get_db] = _fake_db
+    try:
+        with client as c:
+            r = c.post(
+                f"/api/v1/comprobantes/{task_id}/reextraer", json={"perfil_id": None}
+            )
+            assert r.status_code == 400
+            assert "insuficiente" in r.json()["detail"]
+    finally:
+        app.dependency_overrides.pop(get_db, None)

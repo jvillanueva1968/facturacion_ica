@@ -169,7 +169,16 @@ Relación de latencia: **≈5.1× Tesseract** (supera el límite de 2× del crit
    motores fallaban las 5 imágenes Wompi. **Corregido:** `_RE_FECHA_MES` (meses EN/ES
    abreviados, meses desde `app.services.extraction.MESES`) y orden de hints ISO → dd/mm → mes.
 3. **`52:57 AM (1)`** (foto rotada/desenfocada): ambos motores no extraen campos
-   (Paddle conf 74.4, Tesseract nada). Sin cambio (limitación de imagen, no de regex).
+   (Paddle conf 74.4, Tesseract nada) y —peor— el LLM **inventaba datos** con ese texto
+   basura (valor 300/1000, fecha `2022-01-01`, ref `123456`). **Corregido (2026-10-01):**
+   (a) Tesseract reintenta rotando 90°/270°/180° cuando el texto no es legible, y la
+   confianza solo cuenta palabras reales (antes "palabras" de espacios daban conf 95 con
+   texto vacío); (b) Paddle activa `use_doc_orientation_classify`; (c) si el OCR no llega
+   a 40 caracteres el proceso **falla con mensaje claro** en vez de llamar al LLM, y
+   `LLMService.extraer_datos` se niega a invocar el modelo con texto basura.
+   Verificado: la imagen pasa de `valor 300/1000` (inventado) a **`valor_total 8800`,
+   fecha `2026-09-18`, ref `17419333`** con ambos motores (Tesseract conf 83.9,
+   Paddle conf 98.6).
 4. **`_RE_REF` demasiado estricto** (post-fix): sin `|REFERENCIA` ampliado, Paddle perdía la
    ref de Redeban (`REF: ...` de 21 dígitos). **Corregido:** alternantes
    `REF\s*[:\-]|REFERENCIA|...` con valor `{3,29}`.
@@ -253,7 +262,12 @@ Notas:
 - Smoke 2026-10-01 (imagen `51:56 (1)`): **tesseract** conf 71.3%, ref `317445016`
   (errónea) vs **paddle** conf **98.3%**, ref `17445016` ✓ (ambos: fecha 2026-09-17,
   valor 11450).
-- `pytest` dentro de la imagen: **131 passed**; ruff delta ≤ 0 (454 vs baseline 456).
+- Smoke 2026-10-01 (imagen rotada `w_...52.57`, la que reportaba "valor muy mal"):
+  **tesseract** conf 83.9 y **paddle** conf 98.6 → ambos `valor_total 8800`,
+  fecha `2026-09-18`, ref `17419333`, perfil `wompi-bancolombia`.
+- `pytest` dentro de la imagen: **137 passed**; ruff → 453 (baseline 456).
+- Paddle corre con `use_doc_orientation_classify=True` (clasificador de orientación
+  `PP-LCNet_x1_0_doc_ori`, ~+0.3 s): fotos giradas se enderezan solas.
 - Implementación: `app/services/paddle_ocr_service.py` (subclase de `OCRService`,
   motor lazy `PaddleOCR(lang="es", engine="onnxruntime")`), `app/api/upload.py`
   (`_servicio_ocr`), selector en `app/static/index.html`, `docker/Dockerfile`
@@ -272,3 +286,4 @@ Notas:
 | 2026-10-01 | fix | Regex corregidas (`_RE_VALORES`, `_RE_FECHA_MES`, `_RE_REF`); +10 tests; 124 passed; ruff delta 0 |
 | 2026-10-01 | 5 | **Decisión: mantener Tesseract** (Paddle descartado por latencia 5×); fases 3–4 canceladas; post-fix Tesseract fecha 38→62%, Paddle fecha 54→92% / valor 77→92% |
 | 2026-10-01 | 3–4 | Selector "Motor OCR" en la UI + `PaddleOCRService` + paddleocr en la imagen Docker (solo pruebas A/B; producción sigue en Tesseract); smoke OK, 131 passed en imagen |
+| 2026-10-01 | fix | **Foto rotada dejaba de inventar datos:** confianza Tesseract solo con palabras reales + reintento rotación 90°/270°/180° (`ocr_service.py`), Paddle con orientación de documento, guard `MIN_TEXTO_OCR=40` en `procesar_documento`/`extraer_datos`/`reextraer`; +6 tests → 137 passed, ruff 453 |

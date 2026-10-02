@@ -7,6 +7,8 @@ from pathlib import Path
 from typing import Union, Tuple, Optional, List
 import logging
 
+from app.services.extraction import MIN_TEXTO_OCR
+
 logger = logging.getLogger(__name__)
 
 
@@ -85,21 +87,50 @@ class OCRService:
             processed, lang=self.lang, config=config, output_type=pytesseract.Output.DICT
         )
         text = self._data_to_text(data)
-        confidences = [int(c) for c in data["conf"] if str(c).lstrip("-").isdigit() and int(c) > 0]
+        # Solo cuenta palabras reales: en fotos rotadas Tesseract devuelve "palabras"
+        # de espacios con conf 95, lo que inflaba la confianza y evitaba los reintentos.
+        words = data.get("text", [])
+        confidences = [
+            int(c)
+            for i, c in enumerate(data["conf"])
+            if str(c).lstrip("-").isdigit() and int(c) > 0 and str(words[i]).strip()
+        ]
         avg = sum(confidences) / len(confidences) if confidences else 0.0
         return text.strip(), float(avg)
+
+    def _es_legible(self, text: str, conf: float) -> bool:
+        return len(text.strip()) >= MIN_TEXTO_OCR and conf >= self.min_conf
+
+    def _score(self, text: str, conf: float) -> tuple:
+        t = text.strip()
+        return (self._es_legible(t, conf), len(t), conf)
 
     def _ocr_image(self, image: np.ndarray) -> Tuple[str, float]:
         # Intento 1: CLAHE+Otsu + psm 4
         p1, c1 = self._run_ocr(self.preprocess_image(image, variant=1), self.config_psm4)
-        if c1 >= self.min_conf:
+        if self._es_legible(p1, c1):
             return p1, c1
 
-        # Retry: adaptativo + psm 6 si la confianza es baja
+        # Retry: adaptativo + psm 6 si no se leyó texto suficiente
         p2, c2 = self._run_ocr(self.preprocess_image(image, variant=2), self.config_psm6)
-        if c2 > c1:
-            return p2, c2
-        return p1, c1
+        best_p, best_c = (p2, c2) if c2 > c1 else (p1, c1)
+
+        if not self._es_legible(best_p, best_c):
+            # Fotos tomadas de lado o al revés: reintenta rotando 90°/270°/180°
+            for rot in (
+                cv2.ROTATE_90_CLOCKWISE,
+                cv2.ROTATE_90_COUNTERCLOCKWISE,
+                cv2.ROTATE_180,
+            ):
+                rotada = cv2.rotate(image, rot)
+                pr, cr = self._run_ocr(
+                    self.preprocess_image(rotada, variant=1), self.config_psm4
+                )
+                if self._score(pr, cr) > self._score(best_p, best_c):
+                    best_p, best_c = pr, cr
+                if self._es_legible(best_p, best_c):
+                    break
+        return best_p, best_c
 
     def _pdf_text_layer(self, path: Path) -> Optional[Tuple[str, float, int]]:
         """PDF con capa de texto: extrae sin rasterizar (confianza 100)."""
@@ -114,7 +145,7 @@ class OCRService:
                 t = page.extract_text() or ""
                 texts.append(f"--- PÁGINA {i + 1} ---\n{t}")
             body = "\n".join(t for t in (page.extract_text() or "" for page in reader.pages))
-            if len(body.strip()) >= 40:
+            if len(body.strip()) >= MIN_TEXTO_OCR:
                 return "\n\n".join(texts).strip(), 100.0, len(reader.pages)
         except Exception as e:
             logger.warning("pdf_text_layer_failed: %s", e)

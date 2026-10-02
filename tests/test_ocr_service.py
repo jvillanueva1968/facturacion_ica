@@ -207,3 +207,125 @@ def test_parse_response_total_desde_servicios():
     )
     datos = LLMService()._parse_response(raw)
     assert datos.valor_total == Decimal("150000")
+
+
+def test_run_ocr_ignora_palabras_en_blanco(monkeypatch):
+    import numpy as np
+    import pytesseract
+
+    from app.services.ocr_service import OCRService
+
+    # Fotos rotadas: Tesseract devuelve "palabras" de espacios con conf 95
+    data = {
+        "text": ["  ", "\n", ""],
+        "conf": [95, 95, 95],
+        "block_num": [1, 1, 1],
+        "par_num": [1, 1, 1],
+        "line_num": [1, 1, 1],
+    }
+    monkeypatch.setattr(pytesseract, "image_to_data", lambda *a, **k: data)
+    svc = OCRService()
+    texto, conf = svc._run_ocr(np.zeros((10, 10), dtype=np.uint8), svc.config_psm4)
+    assert texto == ""
+    assert conf == 0.0
+
+
+def test_extract_text_foto_rotada_90_recupera_texto(tmp_path):
+    from PIL import Image
+
+    receipt = _make_receipt(tmp_path)
+    rot = tmp_path / "comprobante_rotado_90.png"
+    Image.open(receipt).rotate(90, expand=True).save(rot)
+
+    svc = OCRService(lang="spa", dpi=72)
+    texto, confianza, paginas = svc.extract_text(rot)
+    assert paginas == 1
+    assert confianza > 0
+    assert "800197268" in texto.replace(" ", "") or "E2E-UI-777" in texto.replace(" ", "")
+
+
+def test_paddle_usa_orientacion_de_documento(monkeypatch):
+    import sys
+    import types
+
+    from app.services.paddle_ocr_service import PaddleOCRService
+
+    capturado = {}
+
+    class _FakePaddleOCR:
+        def __init__(self, **kwargs):
+            capturado.update(kwargs)
+
+    fake = types.ModuleType("paddleocr")
+    fake.PaddleOCR = _FakePaddleOCR
+    monkeypatch.setitem(sys.modules, "paddleocr", fake)
+
+    svc = PaddleOCRService()
+    svc._get_engine()
+    assert capturado["use_doc_orientation_classify"] is True
+    assert capturado["engine"] == "onnxruntime"
+
+
+def test_extraer_datos_bloquea_texto_insuficiente(monkeypatch):
+    import asyncio
+
+    from app.services.llm_service import LLMService
+
+    svc = LLMService()
+    llamadas = []
+
+    async def _no_llamar(prompt):
+        llamadas.append(prompt)
+        raise AssertionError("no debe invocar el LLM con texto basura")
+
+    monkeypatch.setattr(svc, "_call_ollama", _no_llamar)
+    monkeypatch.setattr(svc, "_call_openrouter", _no_llamar)
+
+    with pytest.raises(ValueError, match="insuficiente"):
+        asyncio.run(svc.extraer_datos(""))
+    with pytest.raises(ValueError, match="insuficiente"):
+        asyncio.run(svc.extraer_datos("   \n  "))
+    assert llamadas == []
+
+
+def test_procesar_documento_falla_si_ocr_vacio(tmp_path, monkeypatch):
+    import asyncio
+    from unittest.mock import AsyncMock, MagicMock
+
+    from app.api import upload as upload_mod
+
+    archivo = tmp_path / "foto_rotada.jpg"
+    archivo.write_bytes(b"fake")
+
+    class _FakeSession:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *exc):
+            return False
+
+    fake_svc = MagicMock()
+    fake_svc.extract_text = MagicMock(return_value=("", 0.0, 1))
+
+    repo = MagicMock()
+    repo.update_ocr = AsyncMock()
+    repo.mark_failed = AsyncMock()
+
+    eventos = []
+
+    async def _emit(task_id, event, **kw):
+        eventos.append((event, kw))
+
+    monkeypatch.setattr(upload_mod, "_servicio_ocr", lambda m: (fake_svc, "tesseract"))
+    monkeypatch.setattr(upload_mod, "SessionLocal", lambda: _FakeSession())
+    monkeypatch.setattr(upload_mod, "ComprobanteRepo", lambda s: repo)
+    monkeypatch.setattr(upload_mod, "emit_stage", _emit)
+
+    asyncio.run(upload_mod.procesar_documento("task-sin-texto", archivo))
+
+    assert not archivo.exists()
+    fallidos = [kw for ev, kw in eventos if ev == "failed"]
+    assert fallidos, "el procesamiento debe fallar con OCR vacío"
+    assert "texto suficiente" in fallidos[0]["mensaje"]
+    assert repo.mark_failed.await_count == 1
+    assert "texto suficiente" in repo.mark_failed.await_args.args[1]

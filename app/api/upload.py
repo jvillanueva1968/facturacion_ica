@@ -44,6 +44,7 @@ from app.services.extraction import (
     campos_faltantes,
     detectar_perfil,
     extraer_campos,
+    MIN_TEXTO_OCR,
 )
 from app.config import get_settings
 from app.db.session import get_db, SessionLocal
@@ -307,6 +308,15 @@ async def procesar_documento(
                 paginas=paginas,
             )
 
+            if len((texto_ocr or "").strip()) < MIN_TEXTO_OCR:
+                # Sin texto no se perfil ni se llama al LLM: el LLM inventa
+                # valor/fecha/referencia cuando el OCR devuelve basura.
+                raise ValueError(
+                    "No se pudo leer el comprobante: el OCR no extrajo texto suficiente "
+                    "(imagen borrosa, rotada o muy pequeña). Reenvíe una foto más nítida "
+                    "y correctamente orientada."
+                )
+
             perfiles = await _cargar_perfiles(session)
             perfil = _resolver_perfil(perfiles, perfil_id, texto_ocr)
             if perfil:
@@ -542,6 +552,12 @@ async def reextraer_comprobante(
             datos = aplicar_identificacion_pref(datos, nit_pref, dv_pref)
     else:
         if base is None:
+            if len((row.texto_ocr or "").strip()) < MIN_TEXTO_OCR:
+                raise HTTPException(
+                    400,
+                    "El texto OCR es insuficiente para re-extraer sin perfil "
+                    "(seleccione un perfil o vuelva a procesar el comprobante)",
+                )
             datos = await llm_service.extraer_datos(row.texto_ocr)
         else:
             datos = base
