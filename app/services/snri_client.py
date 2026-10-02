@@ -3,6 +3,7 @@ from zeep.transports import Transport
 from zeep.plugins import HistoryPlugin
 from zeep.wsse.signature import BinarySignature
 from requests.auth import HTTPBasicAuth
+import asyncio
 import requests
 from requests_pkcs12 import Pkcs12Adapter
 from pathlib import Path
@@ -60,7 +61,11 @@ class SNRIClient:
 
     def _initialize_client(self):
         session = self._create_session_with_cert()
-        transport = Transport(session=session, timeout=settings.snri_timeout)
+        transport = Transport(
+            session=session,
+            timeout=settings.snri_timeout,
+            operation_timeout=settings.snri_timeout,
+        )
 
         zeep_settings = ZeepSettings(
             strict=False,
@@ -698,7 +703,8 @@ class SNRIClient:
         if not self.client:
             return False
         try:
-            response = self.client.service.V_Ping()
+            # zeep es síncrono: en un thread para no bloquear el event loop
+            await asyncio.to_thread(self.client.service.V_Ping)
             return True
         except Exception:
             return False

@@ -186,6 +186,17 @@ class LLMService:
                 datos = await self._call_openrouter(prompt)
             else:
                 raise ValueError(f"Proveedor LLM no soportado: {self.provider}")
+        except httpx.TimeoutException as e:
+            observar_llm("error")
+            raise RuntimeError(
+                f"Timeout del LLM ({self.provider}) tras {settings.llm_timeout}s"
+            ) from e
+        except httpx.HTTPError as e:
+            observar_llm("error")
+            raise RuntimeError(
+                f"Error HTTP llamando al LLM ({self.provider}): "
+                f"{type(e).__name__} {e}"
+            ) from e
         except Exception:
             observar_llm("error")
             raise
@@ -193,7 +204,7 @@ class LLMService:
         return datos
 
     async def _call_ollama(self, prompt: str) -> DatosExtraidos:
-        async with httpx.AsyncClient(timeout=60) as client:
+        async with httpx.AsyncClient(timeout=settings.llm_timeout) as client:
             response = await client.post(
                 f"{settings.ollama_base_url}/api/generate",
                 json={
@@ -209,7 +220,7 @@ class LLMService:
             return self._parse_response(result.get("response", "{}"))
 
     async def _call_openrouter(self, prompt: str) -> DatosExtraidos:
-        async with httpx.AsyncClient(timeout=60) as client:
+        async with httpx.AsyncClient(timeout=settings.llm_timeout) as client:
             response = await client.post(
                 "https://openrouter.ai/api/v1/chat/completions",
                 headers={

@@ -342,7 +342,18 @@ async def procesar_documento(
             datos: Optional[DatosExtraidos] = None
             if usou_llm:
                 await emit_stage(task_id, "llm_start", mensaje="Extrayendo datos con LLM…")
-                datos = await llm_service.extraer_datos(texto_ocr)
+                try:
+                    datos = await llm_service.extraer_datos(texto_ocr)
+                except Exception as llm_err:
+                    if perfil and campos:
+                        logger.warning(
+                            "llm_fallback_perfil",
+                            task_id=task_id,
+                            error=str(llm_err) or type(llm_err).__name__,
+                        )
+                        datos = None
+                    else:
+                        raise
             else:
                 await emit_stage(
                     task_id, "llm_start", mensaje="Extrayendo datos por perfil (sin LLM)…"
@@ -410,15 +421,16 @@ async def procesar_documento(
             )
 
     except Exception as e:
-        logger.error("error_procesamiento", task_id=task_id, error=str(e))
+        err_msg = str(e) or f"{type(e).__name__}: {e!r}"
+        logger.error("error_procesamiento", task_id=task_id, error=err_msg)
         observar_procesamiento(
             "failed", time.monotonic() - t0,
             perfil.codigo if perfil else "ninguno",
         )
-        await emit_stage(task_id, "failed", mensaje=str(e), errores=[str(e)])
+        await emit_stage(task_id, "failed", mensaje=err_msg, errores=[err_msg])
         try:
             async with SessionLocal() as session:
-                await ComprobanteRepo(session).mark_failed(task_id, str(e))
+                await ComprobanteRepo(session).mark_failed(task_id, err_msg)
         except Exception as db_err:
             logger.error("error_marking_failed", task_id=task_id, error=str(db_err))
     finally:
