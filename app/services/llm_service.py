@@ -1,14 +1,14 @@
 import json
 import logging
 import re
+from datetime import date
 import httpx
 from decimal import Decimal, InvalidOperation
 from typing import Optional
-from pydantic import ValidationError
 from app.models.schemas import DatosExtraidos
 from app.config import get_settings
 from app.core.metrics import observar_llm
-from app.services.extraction import MESES, MIN_TEXTO_OCR
+from app.services.extraction import MESES, MIN_TEXTO_OCR, parsear_fecha
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -140,7 +140,13 @@ def hallazgos_preliminares(ocr_text: str) -> str:
     return "\n".join(hints) if hints else "(ninguno)"
 
 
-def normalizar_datos_llm(data: dict) -> dict:
+def _fecha_hint(hints: str) -> Optional[date]:
+    """Fecha determinista detectada por regex en el OCR (línea 'fecha_transaccion=')."""
+    m = re.search(r"^fecha_transaccion=(.+)$", hints, re.M)
+    return parsear_fecha(m.group(1).strip()) if m else None
+
+
+def normalizar_datos_llm(data: dict, fecha_fallback: Optional[date] = None) -> dict:
     """Normaliza montos del JSON del LLM y rellena valor_total desde servicios si hace falta."""
     if not isinstance(data, dict):
         return data
@@ -159,6 +165,21 @@ def normalizar_datos_llm(data: dict) -> dict:
             total_svcs += Decimal(sv)
     if hay_svcs and (not data.get("valor_total")):
         data["valor_total"] = str(total_svcs)
+
+    # El LLM devuelve fechas ilegibles (epoch, '17/09/2026 10:33', datetime con
+    # hora…): se normaliza y, si no se puede, se usa la fecha hallada en el OCR.
+    raw = data.get("fecha_transaccion")
+    fecha = parsear_fecha(raw) if raw not in (None, "") else None
+    if fecha is None:
+        fecha = fecha_fallback
+        if fecha is not None:
+            logger.warning(
+                f"fecha_transaccion ilegible en LLM ({raw!r}): uso respaldo OCR {fecha}"
+            )
+    if fecha is not None:
+        data["fecha_transaccion"] = fecha
+    elif raw not in (None, ""):
+        raise ValueError(f"fecha_transaccion ilegible: {raw!r}")
     return data
 
 
@@ -174,16 +195,18 @@ class LLMService:
                 "Texto OCR insuficiente (<40 caracteres): no se extrajeron datos "
                 "para evitar valores inventados"
             )
+        hints = hallazgos_preliminares(ocr_text)
         prompt = PROMPT_EXTRACCION.format(
-            hints=hallazgos_preliminares(ocr_text),
+            hints=hints,
             ocr_text=ocr_text[:8000],
         )
+        fecha_fallback = _fecha_hint(hints)
 
         try:
             if self.provider == "ollama":
-                datos = await self._call_ollama(prompt)
+                datos = await self._call_ollama(prompt, fecha_fallback=fecha_fallback)
             elif self.provider == "openrouter":
-                datos = await self._call_openrouter(prompt)
+                datos = await self._call_openrouter(prompt, fecha_fallback=fecha_fallback)
             else:
                 raise ValueError(f"Proveedor LLM no soportado: {self.provider}")
         except httpx.TimeoutException as e:
@@ -203,7 +226,9 @@ class LLMService:
         observar_llm("ok")
         return datos
 
-    async def _call_ollama(self, prompt: str) -> DatosExtraidos:
+    async def _call_ollama(
+        self, prompt: str, fecha_fallback: Optional[date] = None
+    ) -> DatosExtraidos:
         async with httpx.AsyncClient(timeout=settings.llm_timeout) as client:
             response = await client.post(
                 f"{settings.ollama_base_url}/api/generate",
@@ -217,9 +242,13 @@ class LLMService:
             )
             response.raise_for_status()
             result = response.json()
-            return self._parse_response(result.get("response", "{}"))
+            return self._parse_response(
+                result.get("response", "{}"), fecha_fallback=fecha_fallback
+            )
 
-    async def _call_openrouter(self, prompt: str) -> DatosExtraidos:
+    async def _call_openrouter(
+        self, prompt: str, fecha_fallback: Optional[date] = None
+    ) -> DatosExtraidos:
         async with httpx.AsyncClient(timeout=settings.llm_timeout) as client:
             response = await client.post(
                 "https://openrouter.ai/api/v1/chat/completions",
@@ -240,13 +269,17 @@ class LLMService:
             response.raise_for_status()
             result = response.json()
             content = result["choices"][0]["message"]["content"]
-            return self._parse_response(content)
+            return self._parse_response(content, fecha_fallback=fecha_fallback)
 
-    def _parse_response(self, json_str: str) -> DatosExtraidos:
+    def _parse_response(
+        self, json_str: str, fecha_fallback: Optional[date] = None
+    ) -> DatosExtraidos:
         try:
             data = json.loads(json_str)
-            data = normalizar_datos_llm(data)
+            data = normalizar_datos_llm(data, fecha_fallback=fecha_fallback)
             return DatosExtraidos(**data)
-        except (json.JSONDecodeError, ValidationError) as e:
+        except ValueError as e:
+            # ValueError cubre JSONDecodeError y ValidationError (superclases) más
+            # los errores propios de normalización (ej. fecha_transaccion ilegible).
             logger.error(f"Error parseando respuesta LLM: {e}\nRespuesta: {json_str[:500]}")
             raise ValueError(f"Respuesta LLM inválida: {e}")

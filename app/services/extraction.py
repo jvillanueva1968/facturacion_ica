@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
+from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 from typing import Optional
 
@@ -106,6 +107,63 @@ def normalizar_fecha(raw: Optional[str]) -> str:
         if mes:
             return f"{int(m.group(3)):04d}-{mes:02d}-{int(m.group(2)):02d}"
     return ""
+
+
+_RE_FECHA_ISO_LIBRE = re.compile(r"\b(\d{4})-(\d{1,2})-(\d{1,2})(?:[T\s]\d{1,2}:\d{2})?")
+_RE_FECHA_DMY_LIBRE = re.compile(r"(?<!\d)(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})(?!\d)")
+_RE_FECHA_MES_LIBRE = re.compile(
+    r"\b(ENE|JAN|FEB|MAR|ABR|APR|MAY|JUN|JUL|AGO|AUG|SEP|OCT|NOV|DIC|DEC)"
+    r"\s+(\d{1,2}),?\s+(\d{4})\b",
+    re.I,
+)
+_RE_FECHA_COMPACTA = re.compile(r"(?:19|20)\d{6}\Z")
+
+
+def _fecha_o_none(y: int, m: int, d: int) -> Optional[date]:
+    try:
+        return date(y, m, d)
+    except ValueError:
+        return None
+
+
+def parsear_fecha(raw) -> Optional[date]:
+    """Interpreta valores de fecha heterogéneos del LLM/OCR → `date` o `None`.
+
+    Acepta `date`/`datetime`, ISO ('2026-09-17'), ISO con hora ('2026-09-17T10:33:00'),
+    '17/09/2026', 'SEP 17 2026' y '20260917', también embebidos en texto libre.
+
+    Los números puros (epoch, referencias) NO se interpretan: devolver una fecha
+    falsa es peor que reportar el valor ilegible y usar el respaldo del OCR.
+    """
+    if raw is None:
+        return None
+    if isinstance(raw, datetime):
+        return raw.date()
+    if isinstance(raw, date):
+        return raw
+    s = " ".join(str(raw).split())
+    if not s:
+        return None
+    m = _RE_FECHA_ISO_LIBRE.search(s)
+    if m:
+        f = _fecha_o_none(int(m.group(1)), int(m.group(2)), int(m.group(3)))
+        if f:
+            return f
+    m = _RE_FECHA_DMY_LIBRE.search(s)
+    if m:
+        d, mo, y = int(m.group(1)), int(m.group(2)), int(m.group(3))
+        if mo > 12 and d <= 12:
+            d, mo = mo, d  # formato US ('09-17-2026')
+        return _fecha_o_none(y, mo, d)
+    m = _RE_FECHA_MES_LIBRE.search(s)
+    if m:
+        mes = MESES.get(m.group(1).upper())
+        if mes:
+            return _fecha_o_none(int(m.group(3)), mes, int(m.group(2)))
+    m = _RE_FECHA_COMPACTA.match(s)
+    if m:
+        return _fecha_o_none(int(s[:4]), int(s[4:6]), int(s[6:8]))
+    return None
 
 
 @dataclass

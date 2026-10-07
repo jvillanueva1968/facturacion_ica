@@ -4,6 +4,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from enum import Enum
 from app.services.nit_validator import normalizar_nit_dv
+from app.services.extraction import parsear_fecha
 
 
 class FormaPago(str, Enum):
@@ -281,6 +282,16 @@ class DatosExtraidos(BaseModel):
         s = str(v or "").strip().upper()
         validas = {m.value for m in FormaPago}
         return s if s in validas else "CONSIGNACION"
+
+    @field_validator("fecha_transaccion", mode="before")
+    @classmethod
+    def _fecha_transaccion_legible(cls, v):
+        if v is None or v == "":
+            return v
+        f = parsear_fecha(v)
+        if f is None:
+            raise ValueError(f"fecha_transaccion ilegible: {v!r}")
+        return f
 
     @model_validator(mode="after")
     def _normalizar_nit(self):

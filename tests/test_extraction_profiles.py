@@ -66,6 +66,34 @@ def test_normalizar_fecha_formatos():
     assert normalizar_fecha(None) == ""
 
 
+def test_parsear_fecha_formatos():
+    from datetime import date, datetime
+
+    from app.services.extraction import parsear_fecha
+
+    assert parsear_fecha("2026-09-17") == date(2026, 9, 17)
+    assert parsear_fecha("2026-09-17T10:33:00") == date(2026, 9, 17)
+    assert parsear_fecha("2026-09-17 10:33:00") == date(2026, 9, 17)
+    assert parsear_fecha("2026-9-7") == date(2026, 9, 7)
+    assert parsear_fecha("17/09/2026 09:35:11") == date(2026, 9, 17)
+    assert parsear_fecha("SEP 17 2026 - 09:24:49") == date(2026, 9, 17)
+    assert parsear_fecha("20260917") == date(2026, 9, 17)
+    assert parsear_fecha(date(2026, 9, 17)) == date(2026, 9, 17)
+    assert parsear_fecha(datetime(2026, 9, 17, 10, 33)) == date(2026, 9, 17)
+
+
+def test_parsear_fecha_rechaza_valores_ilegibles():
+    from app.services.extraction import parsear_fecha
+
+    # Números puros (epoch / referencia) no se interpretan como fecha.
+    assert parsear_fecha("1185192020") is None
+    assert parsear_fecha(1185192020) is None
+    assert parsear_fecha("31/02/2026") is None
+    assert parsear_fecha("basura") is None
+    assert parsear_fecha("") is None
+    assert parsear_fecha(None) is None
+
+
 def test_detectar_perfil_por_keywords():
     perfiles = _perfiles()
     assert detectar_perfil(TEXTO_CREDIBANCO, perfiles).codigo == "credibanco-pos"

@@ -211,6 +211,15 @@ curl -X POST http://localhost:8000/api/v1/upload \
 curl http://localhost:8000/api/v1/status/TU_TASK_ID
 ```
 
+Notas del flujo de carga (`app/api/upload.py`):
+
+- `datos.fecha_transaccion` siempre es `YYYY-MM-DD`: el valor del LLM pasa por
+  `parsear_fecha()` (`app/services/extraction.py`); si es ilegible (epoch, datetime con
+  hora) se usa la fecha detectada por regex en el OCR y, sin pista, la extracción falla
+  con `fecha_transaccion ilegible: ...` (ver `VALIDACION_PADDLEOCR.md`, registro 2026-10-07).
+- Motor OCR: `motor_ocr=tesseract|paddle` en el formulario (default `tesseract`).
+- Progreso por WebSocket `ws://.../api/v1/ws/status/{task_id}` o polling a `/status/{task_id}`.
+
 ---
 
 ## 8. Tests Automatizados
@@ -229,6 +238,37 @@ docker run --rm \
 python scripts/load_test.py --base http://localhost:8000 --concurrency 20 --duration 15
 # Métricas: RPS, latencia p50/p95/p99, códigos HTTP, 429 de rate-limit
 ```
+
+### Load test (`scripts/load_test.py`)
+
+Script de carga/stress de **este** proyecto (API OCR + facturación ICA). No sube archivos
+ni procesa CSV: solo genera tráfico HTTP de lectura contra la API ya levantada.
+El cargue de archivos CSV pertenece a otro proyecto y no aplica aquí.
+
+```bash
+python scripts/load_test.py --base http://localhost:8000 --concurrency 20 --duration 15
+```
+
+| Parámetro | Default | Descripción |
+|-----------|---------|-------------|
+| `--base` | `http://localhost:8000` | URL base de la API (rechazada si contiene `/facturar` o `/facturas` → exit 2) |
+| `--concurrency` | `20` | Workers concurrentes (cada uno con pausa de 10 ms entre requests) |
+| `--duration` | `15.0` | Duración en segundos; antes hay warmup de 3 requests |
+
+Endpoints medidos (`build_targets`):
+
+- `GET /health`, `GET /`, `GET /openapi.json`
+- `GET /api/v1/nit/calcular-dv/800197268`
+- `POST /api/v1/nit/validar` con 3 NITs (con y sin DV embebido)
+- `GET /api/v1/status/00000000-0000-4000-8000-000000000000` → 404 sin escribir en BD
+
+Garantías y salida:
+
+- `FORBIDDEN_PATHS = ("/facturar", "/facturas")`: nunca crea facturas (`facturas_created: 0`).
+- Reporte: `rps`, `ok`/`ok_pct`, `codes`, `errors`, `rate_limited_429`,
+  `latency_ms` (`avg`, `p50`, `p95`, `p99`, `max`).
+- Exit code: `0` = PASS (los 429 de rate-limit se consideran esperados),
+  `1` = FAIL (cualquier 5xx o error de red), `2` = `--base` apunta a facturación.
 
 ---
 
@@ -257,6 +297,7 @@ docker-compose exec api env | grep SNRI
 | `snri_wsdl_loaded: false` | Verificar `wsdl/WS_FACTURACION.wsdl` existe |
 | Error certificado `.p12` | Verificar password en `.env` y archivo en `certs/` |
 | Ollama no responde | `docker-compose restart ollama` y esperar healthcheck |
+| `Respuesta LLM inválida: ... fecha_transaccion` / `date_from_datetime_inexact` | El LLM devolvió una fecha ilegible (epoch, datetime con hora). `parsear_fecha()` (`app/services/extraction.py`) la normaliza y, si no se puede, se usa la fecha hallada por regex en el OCR; sin pista falla con `fecha_transaccion ilegible: ...` (ver `VALIDACION_PADDLEOCR.md`, registro 2026-10-07) |
 | `TesseractNotFoundError` | Fuera de Docker: `scripts\setup_ocr_windows.ps1` (o instalar Tesseract y ponerlo en el PATH) |
 | `PDFInfoNotInstalledError` | Falta Poppler: `winget install oschwartz10612.Poppler` |
 | `ModuleNotFoundError: pypdf` | `pip install pypdf` |

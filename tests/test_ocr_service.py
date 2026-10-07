@@ -209,6 +209,95 @@ def test_parse_response_total_desde_servicios():
     assert datos.valor_total == Decimal("150000")
 
 
+def _crudo_fecha(fecha: str) -> str:
+    return (
+        '{"forma_pago": "CONSIGNACION", "servicios": [], "nit_pagador": "800197268",'
+        f' "fecha_transaccion": "{fecha}", "valor_total": "150000",'
+        ' "numero_referencia": "REF1"}'
+    )
+
+
+def test_parse_response_fecha_iso_con_hora():
+    from datetime import date
+    from app.services.llm_service import LLMService
+
+    datos = LLMService()._parse_response(_crudo_fecha("2026-09-17T10:33:00"))
+    assert datos.fecha_transaccion == date(2026, 9, 17)
+
+
+def test_parse_response_fecha_ilegible_usa_respaldo_ocr():
+    from datetime import date
+    from app.services.llm_service import LLMService
+
+    datos = LLMService()._parse_response(
+        _crudo_fecha("1185192020"), fecha_fallback=date(2026, 9, 23)
+    )
+    assert datos.fecha_transaccion == date(2026, 9, 23)
+
+
+def test_parse_response_fecha_ilegible_sin_respaldo_falla_claro():
+    from app.services.llm_service import LLMService
+
+    with pytest.raises(ValueError, match="fecha_transaccion ilegible"):
+        LLMService()._parse_response(_crudo_fecha("1185192020"))
+
+
+def test_datos_extraidos_normaliza_fecha_en_string():
+    from datetime import date
+    from decimal import Decimal
+
+    from pydantic import ValidationError
+
+    from app.models.schemas import DatosExtraidos
+
+    kwargs = dict(
+        forma_pago="CONSIGNACION",
+        servicios=[],
+        nit_pagador="800197268",
+        valor_total=Decimal("150000"),
+        numero_referencia="REF1",
+    )
+    datos = DatosExtraidos(fecha_transaccion="2026-09-17T10:33:00", **kwargs)
+    assert datos.fecha_transaccion == date(2026, 9, 17)
+    with pytest.raises(ValidationError, match="fecha_transaccion ilegible"):
+        DatosExtraidos(fecha_transaccion="1185192020", **kwargs)
+
+
+def test_extraer_datos_pasa_fecha_del_ocr_como_respaldo(monkeypatch):
+    import asyncio
+    from datetime import date
+    from decimal import Decimal
+
+    from app.models.schemas import DatosExtraidos
+    from app.services.llm_service import LLMService
+
+    svc = LLMService()
+    svc.provider = "ollama"
+    capturado = {}
+
+    async def _fake(prompt, fecha_fallback=None):
+        capturado["prompt"] = prompt
+        capturado["fecha_fallback"] = fecha_fallback
+        return DatosExtraidos(
+            forma_pago="CONSIGNACION",
+            servicios=[],
+            nit_pagador="800197268",
+            fecha_transaccion=date(2026, 9, 23),
+            valor_total=Decimal("150000"),
+            numero_referencia="E2E-UI-777",
+        )
+
+    monkeypatch.setattr(svc, "_call_ollama", _fake)
+    texto = (
+        "COMPROBANTE DE CONSIGNACION\nBANCO: BBVA\nFECHA: 23/09/2026\n"
+        "NIT PAGADOR: 8001972684\nVALOR TOTAL: $150.000,00\n"
+    )
+    datos = asyncio.run(svc.extraer_datos(texto))
+    assert datos.fecha_transaccion == date(2026, 9, 23)
+    assert capturado["fecha_fallback"] == date(2026, 9, 23)
+    assert "fecha_transaccion=2026-09-23" in capturado["prompt"]
+
+
 def test_run_ocr_ignora_palabras_en_blanco(monkeypatch):
     import numpy as np
     import pytesseract
