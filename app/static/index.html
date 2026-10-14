@@ -5,18 +5,38 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Facturación ICA - SNRI</title>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-  <style>
-    :root {
-      --bg: #0f172a;
-      --card: #1e293b;
-      --border: #334155;
-      --text: #e2e8f0;
-      --muted: #94a3b8;
-      --accent: #38bdf8;
-      --ok: #4ade80;
-      --warn: #fbbf24;
-      --err: #f87171;
-    }
+<style>
+      :root {
+        --bg: #0f172a;
+        --card: #1e293b;
+        --border: #334155;
+        --text: #e2e8f0;
+        --muted: #94a3b8;
+        --accent: #38bdf8;
+        --ok: #4ade80;
+        --warn: #fbbf24;
+        --err: #f87171;
+
+        --ica-verde-oscuro: #068460;
+        --ica-verde: #069169;
+        --ica-verde-claro: #c9e2ff;
+        --ica-terracota: #e35336;
+        --ica-terracota-claro: #ffb0a1;
+        --ica-dorado: #ffab00;
+        --ica-dorado-claro: #ffd166;
+      }
+
+      [data-theme="light"] {
+        --bg: #f8fafc;
+        --card: #ffffff;
+        --border: #e2e8f0;
+        --text: #1e293b;
+        --muted: #64748b;
+        --accent: #0ea5e9;
+        --ok: #22c55e;
+        --warn: #f59e0b;
+        --err: #ef4444;
+      }
     * { box-sizing: border-box; }
     body {
       margin: 0;
@@ -287,9 +307,9 @@
       background: var(--card, #fff);
     }
     .kpi-num { display: block; font-size: 1.5rem; font-weight: 700; }
-    .kpi-lbl { font-size: 0.72rem; color: #666; }
+    .kpi-lbl { font-size: 0.72rem; color: var(--muted); }
     .barra {
-      background: #e8e8e8;
+      background: var(--border);
       border-radius: 4px;
       height: 10px;
       overflow: hidden;
@@ -298,9 +318,20 @@
     .barra span {
       display: block;
       height: 100%;
-      background: #2563eb;
+      background: var(--accent);
       border-radius: 4px;
     }
+    .theme-toggle {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.4rem 0.6rem;
+      cursor: pointer;
+      font-size: 1rem;
+      color: var(--text);
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .theme-toggle:hover { border-color: var(--accent); }
   </style>
 </head>
 <body x-data="app()" x-init="init()">
@@ -311,6 +342,7 @@
             x-text="config ? '← Volver' : '⚙ Configuración'" style="font-size:0.8rem; padding:0.4rem 0.8rem"></button>
     <button class="secondary" @click="toggleMetricas()"
             x-text="metricas ? '← Volver' : '📊 Métricas'" style="font-size:0.8rem; padding:0.4rem 0.8rem"></button>
+    <button class="theme-toggle" @click="toggleTheme()" :title="theme === 'dark' ? 'Cambiar a modo día' : 'Cambiar a modo noche'" x-text="theme === 'dark' ? '☀️' : '🌙'"></button>
     <div class="health" :class="healthOk ? 'ok' : 'bad'" x-text="healthOk ? 'API OK' : 'API caída'"></div>
   </div>
 </header>
@@ -347,6 +379,7 @@
     <div class="msg err" x-show="nitValidado===false && nitMensaje"
          x-text="'NIT: ' + (nitMensaje || '')"></div>
 
+    <!--
     <div class="msg info" style="margin-top:0.75rem" x-show="terceroSnri">
       <strong>Tercero SNRI (solo lectura)</strong>
       <div class="grid" style="margin-top:0.5rem">
@@ -384,6 +417,7 @@
         Datos obtenidos de la consulta SNRI; no se digitan.
       </p>
     </div>
+-->
     <div class="actions">
       <button class="secondary" @click="validarNitPre()" :disabled="validandoNit"
               x-text="validandoNit ? 'Validando…' : 'Validar NIT'"></button>
@@ -414,8 +448,8 @@
     </label>
     <label style="margin-bottom:0.75rem">Motor OCR
       <select x-model="motorOcr">
-        <option value="tesseract">Tesseract (por defecto, rápido)</option>
         <option value="paddle">PaddleOCR (más preciso, ~3-5 s)</option>
+        <option value="tesseract">Tesseract (rápido)</option>
       </select>
     </label>
     <div class="drop"
@@ -561,6 +595,7 @@
           </template>
         </div>
 
+        <!--
         <div class="msg info" style="margin-top:0.75rem" x-show="terceroSnri">
           <strong>Tercero SNRI (solo lectura)</strong>
           <div class="grid" style="margin-top:0.5rem">
@@ -601,6 +636,7 @@
             Datos obtenidos de la consulta SNRI; no se digitan.
           </p>
         </div>
+-->
 
         <h2 style="margin-top:1.25rem">Servicios</h2>
         <table>
@@ -1013,6 +1049,13 @@ function app() {
     md: null,
     metricasError: '',
     esAdmin: false,
+    theme: localStorage.getItem('ica_theme') || 'dark',
+
+    toggleTheme() {
+      this.theme = this.theme === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', this.theme);
+      localStorage.setItem('ica_theme', this.theme);
+    },
     perfiles: [],
     camposCatalogo: [],
     etiquetasCatalogo: {},
@@ -1020,7 +1063,7 @@ function app() {
     nuevoCampoLabel: '',
     customFormKeys: [],
     perfilSel: '',
-    motorOcr: 'tesseract',
+    motorOcr: 'paddle',
     perfilReextraer: '',
     perfilCodigo: '',
     camposFaltantes: [],
@@ -1168,6 +1211,7 @@ function app() {
     },
 
     async init() {
+      document.documentElement.setAttribute('data-theme', this.theme);
       await Promise.all([this.checkHealth(), this.cargarAuth(), this.cargarCatalogo(), this.cargarPerfiles()]);
       setInterval(() => this.checkHealth(), 15000);
       this.loadFacturas();

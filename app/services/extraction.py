@@ -21,6 +21,15 @@ CAMPOS_CATALOGO = [
     "convenio",
     "ubicacion",
     "autenticacion",
+    "numero_transaccion",
+    "aprob_banco",
+    "id_trx",
+    "registro_operacion",
+    "trans_cajero",
+    "convenio_recaudo",
+    "entidad_recaudo",
+    "cuenta_ultimos4",
+    "pin_ica",
 ]
 
 # Texto OCR mínimo para considerar que se leyó el comprobante.
@@ -42,6 +51,15 @@ ETIQUETAS = {
     "convenio": "Convenio",
     "ubicacion": "Ubicación",
     "autenticacion": "Autenticación",
+    "numero_transaccion": "N° Transacción",
+    "aprob_banco": "Aprob. Banco",
+    "id_trx": "Id Trx",
+    "registro_operacion": "Registro Operación",
+    "trans_cajero": "TRANS Cajero",
+    "convenio_recaudo": "Convenio Recaudo",
+    "entidad_recaudo": "Entidad Recaudo",
+    "cuenta_ultimos4": "Cuenta (últimos 4)",
+    "pin_ica": "PIN ICA",
 }
 
 MESES = {
@@ -287,6 +305,7 @@ def ordenar_campos(perfil: PerfilExtraccionData) -> list:
 
 # ---------------------------------------------------------------------------
 # Perfiles semilla (analizados sobre las 13 imágenes de C:\proyectos\vaucher\vaucher)
+# + 6 perfiles ICA Soportes de Recaudo (GRF-GI-GUIA-002)
 # ---------------------------------------------------------------------------
 
 PERFILES_SEED: list[dict] = [
@@ -378,6 +397,104 @@ PERFILES_SEED: list[dict] = [
                 "regex": r"(?:cr\s*\d+[^\n]{2,60}|calle\s+[^\n]{2,60}|av\.?\s+[^\n]{2,60})",
                 "requerido": False, "orden": 7,
             },
+        },
+    },
+    # ========================================================================
+    # PERFILES ICA - SOPORTES DE RECAUDO (GRF-GI-GUIA-002)
+    # ========================================================================
+    {
+        "codigo": "davivienda",
+        "nombre": "Davivienda (Consignación/Corresponsales/Punto Pago)",
+        "detect_keywords": [
+            "davivienda", "ica recaudos", "convenio 008969998189", "convenio 008969993628",
+            "corresponsales", "punto de pago", "consignacion", "recaudos sucursales"
+        ],
+        "llm_respaldo": True,
+        "campos": {
+            "fecha": {"regex": r"(\d{1,2}/\d{1,2}/\d{4})", "requerido": True, "orden": 1},
+            "valor_total": {"regex": r"(?:VALOR|TOTAL|MONTO)\s*[:\$]\s*([\d.,]{3,15})", "requerido": True, "orden": 2},
+            "numero_transaccion": {"regex": r"(?:TRANSACCION|TRANSACCI[OÓ]N|APROB\s*BANCO|ID\s*TRX)\s*[:\s]*([A-Z0-9]{6,15})", "requerido": True, "orden": 3},
+            "convenio_recaudo": {"regex": r"(?:CONVENIO|CONV\.)\s*[:\s]*(\d{6,15})", "requerido": True, "orden": 4},
+            "entidad_recaudo": {"regex": r"(INSTITUTO\s+COLOMBIANO\s+AGROPECUARIO|ICA\s+RECAUDOS)", "requerido": True, "orden": 5},
+            "banco": {"literal": "DAVIVIENDA", "requerido": False, "orden": 6},
+            "forma_pago": {"literal": "CONSIGNACION", "requerido": False, "orden": 7},
+        },
+    },
+    {
+        "codigo": "colpatria",
+        "nombre": "Colpatria Punto de Pago",
+        "detect_keywords": ["colpatria", "punto de pago", "pin ica", "instituto colombiano agropecuario"],
+        "llm_respaldo": True,
+        "campos": {
+            "fecha": {"regex": r"(\d{1,2}/\d{1,2}/\d{4})", "requerido": True, "orden": 1},
+            "valor_total": {"regex": r"(?:VALOR|TOTAL|MONTO)\s*[:\$]\s*([\d.,]{3,15})", "requerido": True, "orden": 2},
+            "id_trx": {"regex": r"(?:ID\s*TRX|TRX)\s*[:\s]*(\d{8,15})", "requerido": True, "orden": 3},
+            "pin_ica": {"regex": r"PIN\s*ICA\s*[:\s]*(\d{6,15})", "requerido": True, "orden": 4},
+            "convenio_recaudo": {"regex": r"(?:CONVENIO|CONV\.)\s*[:\s]*(\d{6,15})", "requerido": True, "orden": 5},
+            "entidad_recaudo": {"regex": r"(INSTITUTO\s+COLOMBIANO\s+AGROPECUARIO|PIN\s+ICA\s+INSTITUTO)", "requerido": True, "orden": 6},
+            "banco": {"literal": "COLPATRIA", "requerido": False, "orden": 7},
+            "forma_pago": {"literal": "CONSIGNACION", "requerido": False, "orden": 8},
+        },
+    },
+    {
+        "codigo": "punto_red",
+        "nombre": "Punto Red",
+        "detect_keywords": ["punto red", "pin ica instituto", "colombiano agropecuario", "punto red consignacion"],
+        "llm_respaldo": True,
+        "campos": {
+            "fecha": {"regex": r"(\d{1,2}/\d{1,2}/\d{4})", "requerido": True, "orden": 1},
+            "valor_total": {"regex": r"(?:VALOR|TOTAL|MONTO)\s*[:\$]\s*([\d.,]{3,15})", "requerido": True, "orden": 2},
+            "numero_transaccion": {"regex": r"(?:TRANSACCION|TRANSACCI[OÓ]N)\s*[:\s]*(\d{10,15})", "requerido": True, "orden": 3},
+            "pin_ica": {"regex": r"PIN\s*ICA\s*[:\s]*(\d{6,15})", "requerido": True, "orden": 4},
+            "entidad_recaudo": {"regex": r"(PIN\s+ICA\s+INSTITUTO\s+COLOMBIANO\s+AGROPECUARIO)", "requerido": True, "orden": 5},
+            "banco": {"literal": "PUNTO RED", "requerido": False, "orden": 6},
+            "forma_pago": {"literal": "CONSIGNACION", "requerido": False, "orden": 7},
+        },
+    },
+    {
+        "codigo": "bancolombia",
+        "nombre": "Bancolombia (Sucursal/Corresponsal/Cajero)",
+        "detect_keywords": ["bancolombia", "multipagas", "corresponsal", "cajero automatico", "convenio 72159", "230081564"],
+        "llm_respaldo": True,
+        "campos": {
+            "fecha": {"regex": r"(\d{1,2}/\d{1,2}/\d{4})", "requerido": True, "orden": 1},
+            "valor_total": {"regex": r"(?:VALOR|TOTAL|MONTO)\s*[:\$]\s*([\d.,]{3,15})", "requerido": True, "orden": 2},
+            "numero_transaccion": {"regex": r"(?:REGISTRO\s+OPERACION|OPERACION|APRO|TRANS)\s*[:\s]*([A-Z0-9]{6,15})", "requerido": True, "orden": 3},
+            "registro_operacion": {"regex": r"REGISTRO\s+OPERACION\s*[:\s]*(\d{9,15})", "requerido": False, "orden": 4},
+            "trans_cajero": {"regex": r"TRANS\s*[:\s]*(\d{8,15})", "requerido": False, "orden": 5},
+            "convenio_recaudo": {"regex": r"(?:CONVENIO|CONV\.)\s*[:\s]*(\d{5,15})", "requerido": True, "orden": 6},
+            "entidad_recaudo": {"regex": r"(INSTITUTO\s+COLOMBIANO\s+AGROPECUARIO|COLOMBIANO)", "requerido": True, "orden": 7},
+            "banco": {"literal": "BANCOLOMBIA", "requerido": False, "orden": 8},
+            "forma_pago": {"literal": "CONSIGNACION", "requerido": False, "orden": 9},
+        },
+    },
+    {
+        "codigo": "banco_occidente",
+        "nombre": "Banco de Occidente",
+        "detect_keywords": ["banco de occidente", "occidente", "convenio 12300", "instituto colombiano agropecuario"],
+        "llm_respaldo": True,
+        "campos": {
+            "fecha": {"regex": r"(\d{1,2}/\d{1,2}/\d{4})", "requerido": True, "orden": 1},
+            "valor_total": {"regex": r"(?:VALOR|TOTAL|MONTO)\s*[:\$]\s*([\d.,]{3,15})", "requerido": True, "orden": 2},
+            "numero_transaccion": {"regex": r"(?:NUMERO|N[ÚU]MERO|TRANSACCION)\s*[:\s]*(\d{8,15})", "requerido": True, "orden": 3},
+            "entidad_recaudo": {"regex": r"(INSTITUTO\s+COLOMBIANO\s+AGROPECUARIO)", "requerido": True, "orden": 4},
+            "cuenta_ultimos4": {"regex": r"(?:CUENTA|CTA)\s*[:\s]*\d{4,}(\d{4})", "requerido": True, "orden": 5},
+            "convenio_recaudo": {"regex": r"(?:CONVENIO|CONV\.)\s*[:\s]*(\d{5,15})", "requerido": True, "orden": 6},
+            "banco": {"literal": "BANCO DE OCCIDENTE", "requerido": False, "orden": 7},
+            "forma_pago": {"literal": "CONSIGNACION", "requerido": False, "orden": 8},
+        },
+    },
+    {
+        "codigo": "datafono",
+        "nombre": "Datáfono / POS Genérico",
+        "detect_keywords": ["datafono", "aut", "venta aprobada", "credibanco", "pos"],
+        "llm_respaldo": True,
+        "campos": {
+            "fecha": {"regex": r"(\d{1,2}/\d{1,2}/\d{4})", "requerido": True, "orden": 1},
+            "valor_total": {"regex": r"(?:VALOR|TOTAL|MONTO|VLR\.?\s*NETO)\s*[:\$]\s*([\d.,]{3,15})", "requerido": True, "orden": 2},
+            "autenticacion": {"regex": r"(?:AUT|AUTORIZACION|AUTH)\s*[:\s]*([A-Z0-9]{6,15})", "requerido": True, "orden": 3},
+            "banco": {"literal": "DATAFONO", "requerido": False, "orden": 4},
+            "forma_pago": {"literal": "DATAFONO", "requerido": False, "orden": 5},
         },
     },
 ]
