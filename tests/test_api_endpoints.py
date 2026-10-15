@@ -17,6 +17,7 @@ def test_root_serves_ui():
     r = client.get("/")
     assert r.status_code == 200
     assert "text/html" in r.headers.get("content-type", "")
+    assert r.headers.get("cache-control") == "no-cache"
     assert "Facturación" in r.text or "app()" in r.text
 
 

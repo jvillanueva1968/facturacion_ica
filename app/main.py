@@ -202,7 +202,9 @@ async def health_check():
 async def root():
     index = STATIC_DIR / "index.html"
     if index.is_file():
-        return FileResponse(str(index))
+        # no-cache: el navegador siempre revalida el shell de la UI (ETag 304),
+        # evitando que quede pegado un index.html viejo tras cada despliegue.
+        return FileResponse(str(index), headers={"Cache-Control": "no-cache"})
     return {"message": "Facturación ICA SNRI API", "docs": "/docs"}
 
 
