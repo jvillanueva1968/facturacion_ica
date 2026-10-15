@@ -316,6 +316,8 @@ class UploadResponse(BaseModel):
     nit_validado: Optional[bool] = None
     nit_mensaje: Optional[str] = None
     texto_ocr: Optional[str] = None
+    perfil_codigo: Optional[str] = None
+    perfil_origen: Optional[str] = None
 
 
 class FacturaImpresaResponse(BaseModel):

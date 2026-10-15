@@ -83,6 +83,7 @@ async def emit_stage(
     texto_ocr: Optional[str] = None,
     paginas: Optional[int] = None,
     perfil_codigo: Optional[str] = None,
+    perfil_origen: Optional[str] = None,
 ) -> None:
     base = dict(STAGE_EVENTS.get(stage, {"stage": stage, "status": "processing", "progress": 50}))
     event: Dict[str, Any] = dict(base)
@@ -104,4 +105,6 @@ async def emit_stage(
         event["paginas"] = paginas
     if perfil_codigo is not None:
         event["perfil_codigo"] = perfil_codigo
+    if perfil_origen is not None:
+        event["perfil_origen"] = perfil_origen
     await progress_hub.publish(task_id, event)

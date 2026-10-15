@@ -101,12 +101,13 @@ def _resolver_perfil(
     perfiles: list[PerfilExtraccionData],
     perfil_id: Optional[str],
     texto: str,
-) -> Optional[PerfilExtraccionData]:
+) -> tuple[Optional[PerfilExtraccionData], str]:
+    """Devuelve (perfil, origen): 'manual' si vino del formulario, 'auto' si se detectó."""
     if perfil_id:
         for p in perfiles:
             if p.id == perfil_id or p.codigo == perfil_id:
-                return p
-    return detectar_perfil(texto, perfiles)
+                return p, "manual"
+    return detectar_perfil(texto, perfiles), "auto"
 
 
 def _datos_desde_campos(
@@ -318,7 +319,7 @@ async def procesar_documento(
                 )
 
             perfiles = await _cargar_perfiles(session)
-            perfil = _resolver_perfil(perfiles, perfil_id, texto_ocr)
+            perfil, perfil_origen = _resolver_perfil(perfiles, perfil_id, texto_ocr)
             if perfil:
                 observar_extraccion(perfil.codigo)
             campos: dict = {}
@@ -334,8 +335,13 @@ async def procesar_documento(
                 await emit_stage(
                     task_id,
                     "perfil",
-                    mensaje=f"Perfil: {perfil.nombre}",
+                    mensaje=(
+                        f"Perfil detectado: {perfil.nombre}"
+                        if perfil_origen == "auto"
+                        else f"Perfil: {perfil.nombre}"
+                    ),
                     perfil_codigo=perfil.codigo,
+                    perfil_origen=perfil_origen,
                 )
 
             usou_llm = perfil is None or perfil.llm_respaldo
@@ -414,6 +420,8 @@ async def procesar_documento(
                 texto_ocr=texto_ocr[:8000],
                 confianza=confianza,
                 paginas=paginas,
+                perfil_codigo=perfil.codigo if perfil else None,
+                perfil_origen=perfil_origen if perfil else None,
             )
             observar_procesamiento(
                 "completed", time.monotonic() - t0,
@@ -456,6 +464,10 @@ def _status_from_row(row, stage_event: Optional[dict] = None) -> UploadResponse:
     if texto:
         texto = str(texto)[:8000]
 
+    perfil_codigo = stage_event.get("perfil_codigo")
+    if not perfil_codigo and datos is not None:
+        perfil_codigo = datos.perfil_codigo
+
     return UploadResponse(
         task_id=row.task_id,
         status=row.status,
@@ -469,6 +481,8 @@ def _status_from_row(row, stage_event: Optional[dict] = None) -> UploadResponse:
         nit_validado=row.nit_validado if row.nit_validado is not None else stage_event.get("nit_validado"),
         nit_mensaje=row.nit_mensaje or stage_event.get("nit_mensaje"),
         texto_ocr=texto,
+        perfil_codigo=perfil_codigo,
+        perfil_origen=stage_event.get("perfil_origen"),
     )
 
 
@@ -533,6 +547,7 @@ async def reextraer_comprobante(
 
     perfiles = await _cargar_perfiles(db)
     perfil = None
+    perfil_origen = "auto"
     if body.perfil_id:
         perfil = next(
             (p for p in perfiles if p.id == body.perfil_id or p.codigo == body.perfil_id),
@@ -540,8 +555,9 @@ async def reextraer_comprobante(
         )
         if not perfil:
             raise HTTPException(404, "Perfil no encontrado o inactivo")
+        perfil_origen = "manual"
     else:
-        perfil = _resolver_perfil(perfiles, None, row.texto_ocr)
+        perfil, perfil_origen = _resolver_perfil(perfiles, None, row.texto_ocr)
 
     campos = extraer_campos(row.texto_ocr, perfil) if perfil else {}
 
@@ -603,6 +619,7 @@ async def reextraer_comprobante(
         confianza=float(row.confianza_ocr) if row.confianza_ocr is not None else None,
         paginas=row.paginas,
         perfil_codigo=perfil.codigo if perfil else None,
+        perfil_origen=perfil_origen if perfil else None,
     )
 
     return _status_from_row(row)

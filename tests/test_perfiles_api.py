@@ -284,6 +284,9 @@ def test_reextraer_sin_perfil_detecta_y_fusiona(monkeypatch):
             assert datos["banco"] == "CREDIBANCO"
             assert datos["nit_pagador"] == "800197268"
             assert datos["perfil_codigo"] == "credibanco-pos"
+            body = r.json()
+            assert body["perfil_codigo"] == "credibanco-pos"
+            assert body["perfil_origen"] == "auto"
     finally:
         app.dependency_overrides.pop(get_db, None)
 
@@ -365,6 +368,7 @@ def test_ui_incluye_config_y_perfiles():
     assert "camposPerfil()" in html
     assert "perfil_id" in html
     assert "perfiles/catalogo/campos" in html
+    assert "detectado automáticamente" in html
     assert "xfd.append" not in html
 
 

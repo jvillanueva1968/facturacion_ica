@@ -107,12 +107,35 @@ def test_detectar_perfil_sin_match():
     assert detectar_perfil("credibanco", []) is None
 
 
+def test_resolver_perfil_reporta_origen():
+    from app.api.upload import _resolver_perfil
+
+    perfiles = _perfiles()
+    p, origen = _resolver_perfil(perfiles, "credibanco-pos", TEXTO_CREDIBANCO)
+    assert (p.codigo, origen) == ("credibanco-pos", "manual")
+
+    p, origen = _resolver_perfil(perfiles, None, TEXTO_CREDIBANCO)
+    assert (p.codigo, origen) == ("credibanco-pos", "auto")
+
+    # id inexistente cae a detección automática
+    p, origen = _resolver_perfil(perfiles, "no-existe", TEXTO_WOMPI)
+    assert (p.codigo, origen) == ("wompi-bancolombia", "auto")
+
+
 def test_detectar_perfil_respeta_inactivo():
+    perfiles = _perfiles()
+    for p in perfiles:
+        p.activo = False
+    assert detectar_perfil(TEXTO_CREDIBANCO, perfiles) is None
+
+    # Con solo credibanco-pos inactivo puede ganar el perfil genérico "datafono"
+    # (sus keywords cubren POS genéricos), pero nunca el inactivo.
     perfiles = _perfiles()
     for p in perfiles:
         if p.codigo == "credibanco-pos":
             p.activo = False
-    assert detectar_perfil(TEXTO_CREDIBANCO, perfiles) is None
+    detectado = detectar_perfil(TEXTO_CREDIBANCO, perfiles)
+    assert detectado is None or detectado.codigo != "credibanco-pos"
 
 
 def test_extraer_campos_credibanco():
@@ -172,6 +195,9 @@ def test_campos_catalogo_completo():
     assert set(CAMPOS_CATALOGO) == {
         "valor_total", "fecha", "numero_referencia", "banco",
         "forma_pago", "convenio", "ubicacion", "autenticacion",
+        "numero_transaccion", "aprob_banco", "id_trx", "registro_operacion",
+        "trans_cajero", "convenio_recaudo", "entidad_recaudo",
+        "cuenta_ultimos4", "pin_ica",
     }
     for seed in PERFILES_SEED:
         for campo in seed["campos"]:

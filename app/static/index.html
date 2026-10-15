@@ -481,7 +481,7 @@
             x-show="status==='processing'"></span>
       <span class="badge" :class="confianzaBadgeCls" x-show="confianzaOcr!=null"
             x-text="'OCR ' + Math.round(confianzaOcr) + '%'"></span>
-      <span class="badge info" x-show="perfilCodigo" x-text="'Perfil: ' + perfilCodigo"></span>
+      <span class="badge info" x-show="perfilCodigo" x-text="'Perfil: ' + perfilNombre()"></span>
     </h2>
 
     <div class="review-layout">
@@ -509,8 +509,13 @@
       <div class="ocr-text">
         <div class="ocr-campos" x-show="textoOcr">
           <div class="muted" style="margin-bottom:0.4rem">
-            Texto OCR · campos del perfil
-            (confianza <span x-text="confianzaOcr!=null ? Math.round(confianzaOcr)+'%' : '—'"></span>)
+            Texto OCR ·
+            <span x-show="perfilActual()">
+              Perfil: <strong x-text="perfilActual() ? perfilActual().nombre : ''"></strong><span
+                x-show="perfilEsAuto()"> (detectado automáticamente)</span> ·
+            </span>
+            <span x-show="!perfilActual()">campos del perfil ·</span>
+            confianza <span x-text="confianzaOcr!=null ? Math.round(confianzaOcr)+'%' : '—'"></span>
           </div>
           <template x-if="!perfilActual()">
             <p class="muted" style="margin:0">
@@ -678,7 +683,8 @@
         </div>
         <div class="muted" style="margin-top:0.5rem">
           Perfil aplicado:
-          <strong x-text="perfilCodigo || 'automático / LLM'"></strong>
+          <strong x-text="perfilActual() ? perfilActual().nombre : (perfilCodigo || 'automático / LLM')"></strong>
+          <span x-show="perfilEsAuto()"> (detectado automáticamente)</span>
           <template x-if="perfilCodigo">
             <span>
               · cambiar:
@@ -1066,6 +1072,7 @@ function app() {
     motorOcr: 'paddle',
     perfilReextraer: '',
     perfilCodigo: '',
+    perfilOrigen: '',
     camposFaltantes: [],
     perfilEdit: null,
     configError: '',
@@ -1437,6 +1444,7 @@ function app() {
       if (j.texto_ocr) this.textoOcr = j.texto_ocr;
       if (j.paginas != null) this.paginas = j.paginas;
       if (j.perfil_codigo) this.perfilCodigo = j.perfil_codigo;
+      if (j.perfil_origen) this.perfilOrigen = j.perfil_origen;
       if (j.datos) {
         this.datos = j.datos;
         this.applyDatos(j.datos);
@@ -1469,6 +1477,8 @@ function app() {
           if (j.confianza_ocr != null) this.confianzaOcr = Number(j.confianza_ocr);
           if (j.texto_ocr) this.textoOcr = j.texto_ocr;
           if (j.paginas != null) this.paginas = j.paginas;
+          if (j.perfil_codigo) this.perfilCodigo = j.perfil_codigo;
+          if (j.perfil_origen) this.perfilOrigen = j.perfil_origen;
           if (j.nit_validado != null) this.nitValidado = j.nit_validado;
           if (j.nit_mensaje) this.nitMensaje = j.nit_mensaje;
           if (j.datos) {
@@ -1532,6 +1542,16 @@ function app() {
         return this.perfiles.find(x => x.id === this.perfilSel) || null;
       }
       return null;
+    },
+
+    perfilNombre() {
+      const p = this.perfiles.find(x => x.codigo === this.perfilCodigo);
+      return p ? p.nombre : this.perfilCodigo;
+    },
+
+    perfilEsAuto() {
+      if (this.perfilOrigen) return this.perfilOrigen === 'auto';
+      return !this.perfilSel && !!this.perfilCodigo;
     },
 
     camposPerfil() {
@@ -1651,6 +1671,8 @@ function app() {
         if (j.texto_ocr) this.textoOcr = j.texto_ocr;
         if (j.confianza_ocr != null) this.confianzaOcr = Number(j.confianza_ocr);
         if (j.paginas != null) this.paginas = j.paginas;
+        if (j.perfil_codigo) this.perfilCodigo = j.perfil_codigo;
+        if (j.perfil_origen) this.perfilOrigen = j.perfil_origen;
         this.stageMsg = this.perfilCodigo
           ? 'Re-extraído con perfil ' + this.perfilCodigo
           : 'Re-extraído (LLM)';
@@ -1893,6 +1915,7 @@ function app() {
       this.textoOcr = '';
       this.paginas = null;
       this.perfilCodigo = '';
+      this.perfilOrigen = '';
       this.camposFaltantes = [];
       this.error = null;
       if (this.docPreview) URL.revokeObjectURL(this.docPreview);
