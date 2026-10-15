@@ -25,6 +25,9 @@ docker/uploads/*
 .DS_Store
 Thumbs.db
 
+# Word lock files
+~$*
+
 # Logs / coverage
 *.log
 .coverage
