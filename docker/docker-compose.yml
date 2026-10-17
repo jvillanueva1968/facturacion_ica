@@ -27,7 +27,7 @@ services:
       - SNRI_TIMEOUT=30
       - LLM_PROVIDER=ollama
       - OLLAMA_BASE_URL=http://ollama:11434
-      - OLLAMA_MODEL=llama3.2:3b
+      - OLLAMA_MODEL=qwen3:4b
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
       - SIGMA_API_URL=http://sigma-mock/api
       - SIGMA_API_TOKEN=${SIGMA_API_TOKEN:-dev-sigma-token}

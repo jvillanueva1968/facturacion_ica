@@ -264,3 +264,66 @@ def test_ordenar_campos_incluye_personalizados():
     ordenados = ordenar_campos(perfil)
     assert [c["campo"] for c in ordenados] == ["valor_total", "numero_tarjeta"]
     assert ordenados[1]["label"] == "N° tarjeta"
+
+
+def _datos_guard(valor: str = "0", ref: str = ""):
+    from datetime import date
+    from decimal import Decimal
+
+    from app.models.schemas import DatosExtraidos
+
+    return DatosExtraidos(
+        forma_pago="CONSIGNACION",
+        servicios=[],
+        nit_pagador="",
+        fecha_transaccion=date(2026, 9, 17),
+        valor_total=Decimal(valor),
+        numero_referencia=ref,
+    )
+
+
+def test_guard_rechaza_texto_ajeno_sin_senales():
+    import pytest
+
+    from app.api.upload import _validar_es_comprobante
+
+    with pytest.raises(ValueError, match="no parece un comprobante"):
+        _validar_es_comprobante(_datos_guard(), None, "auto", {})
+
+
+def test_guard_rechaza_solo_valor_sin_referencia():
+    import pytest
+
+    from app.api.upload import _validar_es_comprobante
+
+    with pytest.raises(ValueError, match="no parece un comprobante"):
+        _validar_es_comprobante(_datos_guard(valor="150000"), None, "auto", {})
+
+
+def test_guard_acepta_valor_y_referencia():
+    from app.api.upload import _validar_es_comprobante
+
+    _validar_es_comprobante(_datos_guard(valor="150000", ref="REF-123"), None, "auto", {})
+
+
+def test_guard_acepta_perfil_auto_detectado():
+    from app.api.upload import _validar_es_comprobante
+
+    _validar_es_comprobante(_datos_guard(), _perfiles()[0], "auto", {})
+
+
+def test_guard_acepta_perfil_manual_con_campos():
+    from app.api.upload import _validar_es_comprobante
+
+    _validar_es_comprobante(
+        _datos_guard(), _perfiles()[0], "manual", {"valor_total": "20000"}
+    )
+
+
+def test_guard_rechaza_perfil_manual_sin_campos():
+    import pytest
+
+    from app.api.upload import _validar_es_comprobante
+
+    with pytest.raises(ValueError, match="No se pudieron extraer datos"):
+        _validar_es_comprobante(_datos_guard(), _perfiles()[0], "manual", {})

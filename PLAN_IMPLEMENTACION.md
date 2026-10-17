@@ -177,7 +177,7 @@ curl http://localhost:8000/health
 # Docs: http://localhost:8000/docs
 
 # 5. Descargar modelo LLM (si usa Ollama)
-docker exec facturacion-ollama ollama pull llama3.2:3b
+docker exec facturacion-ollama ollama pull qwen3:4b
 ```
 
 **Servicios incluidos:**

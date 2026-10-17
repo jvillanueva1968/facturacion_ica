@@ -242,6 +242,30 @@ def test_parse_response_fecha_ilegible_sin_respaldo_falla_claro():
         LLMService()._parse_response(_crudo_fecha("1185192020"))
 
 
+def test_parse_response_rechaza_no_comprobante():
+    from app.services.llm_service import LLMService, NoEsComprobanteError
+
+    raw = (
+        '{"es_comprobante": false, "forma_pago": null, "servicios": null,'
+        ' "nit_pagador": null, "fecha_transaccion": null, "valor_total": null,'
+        ' "numero_referencia": null}'
+    )
+    with pytest.raises(NoEsComprobanteError, match="no parece un comprobante"):
+        LLMService()._parse_response(raw)
+
+
+def test_parse_response_es_comprobante_true_se_conserva():
+    from app.services.llm_service import LLMService
+
+    raw = (
+        '{"es_comprobante": true, "forma_pago": "CONSIGNACION", "servicios": [],'
+        ' "nit_pagador": "800197268", "fecha_transaccion": "2026-09-23",'
+        ' "valor_total": "150000", "numero_referencia": "REF1"}'
+    )
+    datos = LLMService()._parse_response(raw)
+    assert datos.es_comprobante is True
+
+
 def test_datos_extraidos_normaliza_fecha_en_string():
     from datetime import date
     from decimal import Decimal
@@ -296,6 +320,7 @@ def test_extraer_datos_pasa_fecha_del_ocr_como_respaldo(monkeypatch):
     assert datos.fecha_transaccion == date(2026, 9, 23)
     assert capturado["fecha_fallback"] == date(2026, 9, 23)
     assert "fecha_transaccion=2026-09-23" in capturado["prompt"]
+    assert "es_comprobante" in capturado["prompt"]
 
 
 def test_run_ocr_ignora_palabras_en_blanco(monkeypatch):

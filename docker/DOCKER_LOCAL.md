@@ -22,7 +22,7 @@ Archivo fuente: `docker/docker-compose.yml` + `docker/Dockerfile`.
 | **api** | `python:3.11-slim` (build propio) | FastAPI + Uvicorn, SQLAlchemy 2 async + asyncpg, Pydantic v2 | 8000 | UI web, API, `/docs`, `/metrics`, WebSocket de progreso |
 | **db** | `postgres:15-alpine` | PostgreSQL 15 | 5432 | Esquema por `create_all` + seed de perfiles al arrancar |
 | **redis** | `redis:7-alpine` | Redis 7 | 6379 | Progreso de tareas y rate-limit |
-| **ollama** | `ollama/ollama` | Ollama + `llama3.2:3b` (reserva **GPU NVIDIA** en compose) | 11434 | LLM de respaldo en la extracción |
+| **ollama** | `ollama/ollama` | Ollama + `qwen3:4b` (reserva **GPU NVIDIA** en compose) | 11434 | LLM de respaldo en la extracción |
 | **minio** | `quay.io/minio/minio` | Almacenamiento S3-compatible | 9000 / 9001 | Objetos (facturas/adjuntos) |
 | **sigma-mock** | `php:8.4-apache` | PHP 8.4 + Apache (mock del servicio SIGMA) | 8080 | Simulación de SIGMA |
 
@@ -72,7 +72,7 @@ docker compose -f docker/docker-compose.yml ps
 docker compose -f docker/docker-compose.yml logs -f api
 
 # Modelo LLM (solo primera vez)
-docker compose -f docker/docker-compose.yml exec ollama ollama pull llama3.2:3b
+docker compose -f docker/docker-compose.yml exec ollama ollama pull qwen3:4b
 docker compose -f docker/docker-compose.yml exec ollama ollama list
 
 # Tests dentro de la imagen (Python 3.11)

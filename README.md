@@ -109,7 +109,7 @@ emite un número `DEMO-…` sin token SNRI y sincroniza con el mock SIGMA
 
 ```bash
 # En otra terminal
-docker exec facturacion-ollama ollama pull llama3.2:3b
+docker exec facturacion-ollama ollama pull qwen3:4b
 
 # Verificar
 docker exec facturacion-ollama ollama list

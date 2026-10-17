@@ -109,3 +109,18 @@ def test_validar_nit_snri_consulta_aunque_dv_mal():
     assert res["datos"] is not None
     assert "IGNACIO" in res["mensaje"]
     limpiar_cache_nit()
+
+
+def test_validar_nit_snri_sin_nit():
+    limpiar_cache_nit()
+    _FakeSNRI.last_query = None
+    import asyncio
+
+    res = asyncio.get_event_loop().run_until_complete(
+        validar_nit_snri(None, "", _FakeSNRI())
+    )
+    assert res["valido"] is False
+    assert res["datos"] is None
+    assert "Sin NIT" in res["mensaje"]
+    assert _FakeSNRI.last_query is None
+    limpiar_cache_nit()

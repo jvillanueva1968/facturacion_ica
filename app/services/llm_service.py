@@ -13,12 +13,17 @@ from app.services.extraction import MESES, MIN_TEXTO_OCR, parsear_fecha
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
+
+class NoEsComprobanteError(Exception):
+    """El LLM determinó que el texto no corresponde a un comprobante de pago."""
+
 PROMPT_EXTRACCION = """
 Eres un experto en extracción de datos de comprobantes de pago colombianos (consignaciones, transferencias, cheques de gerencia, PSE, datáfonos).
 
 TAREA: Extrae ÚNICAMENTE los campos solicitados en formato JSON válido. NO agregues explicaciones.
 
 CAMPOS REQUERIDOS:
+- es_comprobante: true si el texto corresponde a un comprobante de pago colombiano (consignación, transferencia, PSE, datáfono o cheque de gerencia); false si es otro tipo de documento, recibo no bancario, factura de venta, foto o texto ajeno
 - forma_pago: "CONSIGNACION" | "DATAFONO" | "TRANSFERENCIA" | "CHEQUE_GERENCIA" | "PSE"
 - servicios: array de objetos con claves codigo, nombre, valor
 - nit_pagador: solo números (sin DV)
@@ -32,11 +37,12 @@ CAMPOS REQUERIDOS:
 
 REGLAS:
 1. Si no encuentras un campo, usa null (no inventes)
-2. Valores monetarios: solo números, sin separadores de miles, punto decimal
+2. Valores monetarios en formato colombiano: el punto (.) separa miles y la coma (,) es decimal. Ejemplos: $11.450 → 11450 | $8.800,00 → 8800 | 1.234.567,89 → 1234567.89. NUNCA reinterpretes el punto como decimal cuando separa grupos de 3 dígitos
 3. Fechas: normaliza a YYYY-MM-DD
 4. Forma de pago: infiere por palabras clave (consignación, transferencia, PSE, datáfono, cheque gerencia)
 5. Servicios ICA: busca códigos como "ICA-XXXX", "SERV-XXXX" o nombres de trámites
 6. Si HALLAZGOS_PRELIMINARES trae un valor, úsalo como pista de alta prioridad (verifícalo contra el texto)
+7. Si es_comprobante es false, deja TODOS los demás campos en null (no inventes valores)
 
 HALLAZGOS_PRELIMINARES (regex sobre el OCR):
 {hints}
@@ -229,22 +235,36 @@ class LLMService:
     async def _call_ollama(
         self, prompt: str, fecha_fallback: Optional[date] = None
     ) -> DatosExtraidos:
+        payload = {
+            "model": settings.ollama_model,
+            "prompt": prompt,
+            "format": "json",
+            "stream": False,
+            "think": False,
+            "options": {
+                "temperature": 0.1,
+                "num_predict": 1024,
+                "repeat_penalty": 1.1,
+            },
+        }
         async with httpx.AsyncClient(timeout=settings.llm_timeout) as client:
-            response = await client.post(
-                f"{settings.ollama_base_url}/api/generate",
-                json={
-                    "model": settings.ollama_model,
-                    "prompt": prompt,
-                    "format": "json",
-                    "stream": False,
-                    "options": {"temperature": 0.1, "num_predict": 1024}
-                }
-            )
-            response.raise_for_status()
-            result = response.json()
-            return self._parse_response(
-                result.get("response", "{}"), fecha_fallback=fecha_fallback
-            )
+            for intento in range(2):
+                response = await client.post(
+                    f"{settings.ollama_base_url}/api/generate", json=payload
+                )
+                if response.status_code >= 500 and intento == 0:
+                    # Ollama aborta respuestas degeneradas ("token repeat limit")
+                    # con 500: un reintento cambia el muestreo y suele responder.
+                    logger.warning(
+                        f"Ollama 5xx (intento {intento + 1}): {response.text[:200]}"
+                    )
+                    continue
+                response.raise_for_status()
+                result = response.json()
+                return self._parse_response(
+                    result.get("response", "{}"), fecha_fallback=fecha_fallback
+                )
+        raise RuntimeError("Ollama falló dos veces consecutivas con error 5xx")
 
     async def _call_openrouter(
         self, prompt: str, fecha_fallback: Optional[date] = None
@@ -276,6 +296,12 @@ class LLMService:
     ) -> DatosExtraidos:
         try:
             data = json.loads(json_str)
+            if isinstance(data, dict) and data.get("es_comprobante") is False:
+                raise NoEsComprobanteError(
+                    "El archivo no parece un comprobante de pago colombiano "
+                    "(consignación, transferencia, PSE, datáfono o cheque de gerencia). "
+                    "Verifique la imagen o PDF e intente de nuevo."
+                )
             data = normalizar_datos_llm(data, fecha_fallback=fecha_fallback)
             return DatosExtraidos(**data)
         except ValueError as e:

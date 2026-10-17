@@ -260,11 +260,11 @@ class OCRResultado(BaseModel):
 class DatosExtraidos(BaseModel):
     forma_pago: FormaPago
     servicios: List[dict]
-    nit_pagador: str
+    nit_pagador: Optional[str] = None
     dv_pagador: Optional[str] = None
     fecha_transaccion: date
     valor_total: Decimal
-    numero_referencia: str
+    numero_referencia: Optional[str] = None
     banco: Optional[str] = None
     tipo_documento: Optional[str] = None
     numero_documento: Optional[str] = None
@@ -273,6 +273,7 @@ class DatosExtraidos(BaseModel):
     autenticacion: Optional[str] = None
     perfil_codigo: Optional[str] = None
     campos_perfil: Optional[dict] = None
+    es_comprobante: Optional[bool] = None
 
     @field_validator("forma_pago", mode="before")
     @classmethod

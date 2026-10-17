@@ -45,11 +45,18 @@ def limpiar_cache_nit() -> None:
     _nit_cache.clear()
 
 
-async def validar_nit_snri(nit: str, dv: str, snri_client=None) -> dict:
+async def validar_nit_snri(nit: Optional[str], dv: Optional[str], snri_client=None) -> dict:
     nit, dv = normalizar_nit_dv(nit, dv)
     cache_key = f"{nit}-{dv}"
     if cache_key in _nit_cache:
         return _nit_cache[cache_key]
+
+    if not nit:
+        return {
+            "valido": False,
+            "mensaje": "Sin NIT en el comprobante: ingréselo manualmente",
+            "datos": None,
+        }
 
     dv_ok = bool(dv) and validar_nit_completo(f"{nit}{dv}")
     aviso_dv = "" if dv_ok or not dv else " · DV no coincide (consulta SNRI igual)"

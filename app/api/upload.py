@@ -188,6 +188,38 @@ def _fusionar_datos(
     return DatosExtraidos(**dump)
 
 
+def _validar_es_comprobante(
+    datos: DatosExtraidos,
+    perfil: Optional[PerfilExtraccionData],
+    perfil_origen: Optional[str],
+    campos: dict,
+) -> None:
+    """Rechaza archivos que no parecen comprobantes de pago (fotos, otros documentos).
+
+    Evidencia: perfil compatible detectado o con campos extraídos (+2), valor_total (+1),
+    número de referencia (+1). Sin evidencia suficiente se falla la tarea con un mensaje
+    claro en vez de mostrar un formulario vacío.
+    """
+    score = 0
+    if perfil is not None and (perfil_origen == "auto" or campos):
+        score += 2
+    if datos.valor_total and datos.valor_total > 0:
+        score += 1
+    if (datos.numero_referencia or "").strip():
+        score += 1
+    if score >= 2:
+        return
+    if perfil is not None:
+        raise ValueError(
+            f"No se pudieron extraer datos del comprobante con el perfil «{perfil.nombre}»: "
+            "verifique que el archivo corresponda a ese tipo de documento."
+        )
+    raise ValueError(
+        "El archivo no parece un comprobante de pago colombiano: no se detectó "
+        "valor, número de referencia ni un perfil compatible. Verifique la imagen o PDF."
+    )
+
+
 @router.post("/upload", response_model=UploadResponse)
 @limiter.limit("10/minute")
 async def upload_comprobante(
@@ -382,6 +414,7 @@ async def procesar_documento(
                 datos = await llm_service.extraer_datos(texto_ocr)
 
             datos = aplicar_identificacion_pref(datos, nit_pref, dv_pref)
+            _validar_es_comprobante(datos, perfil, perfil_origen, campos)
             await repo.update_datos(
                 task_id,
                 datos=datos.model_dump(mode="json"),
